@@ -63,18 +63,26 @@ export function createStudentCard(student, actions) {
   const footer = document.createElement("div");
   footer.className = "student-card__footer";
 
+  if (student.daHocLyThuyet) {
+    const scheduleButton = document.createElement("button");
+    scheduleButton.className = "primary-button compact-button";
+    scheduleButton.textContent = "Đặt lịch DAT";
+    scheduleButton.addEventListener("click", () => actions.onSchedule(student.id));
+    footer.appendChild(scheduleButton);
+  }
+
   const detailButton = document.createElement("button");
-  detailButton.className = "secondary-button";
+  detailButton.className = "secondary-button compact-button";
   detailButton.textContent = "Chi tiết";
   detailButton.addEventListener("click", () => actions.onOpenDetail(student.id));
 
   const editButton = document.createElement("button");
-  editButton.className = "secondary-button";
+  editButton.className = "secondary-button compact-button";
   editButton.textContent = "Sửa";
   editButton.addEventListener("click", () => actions.onEdit(student.id));
 
   const deleteButton = document.createElement("button");
-  deleteButton.className = "ghost-danger-button";
+  deleteButton.className = "ghost-danger-button compact-button";
   deleteButton.textContent = "Xóa";
   deleteButton.addEventListener("click", () => actions.onDelete(student.id));
 

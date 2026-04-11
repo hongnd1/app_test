@@ -1,7 +1,7 @@
 ﻿# Mô tả ứng dụng quản lý học sinh
 
 ## 1. Tổng quan
-Ứng dụng được xây dựng để hỗ trợ quản lý học sinh trong quá trình học, theo dõi tiến độ đào tạo, tình trạng nộp học phí và hạng bằng đang theo học.
+Ứng dụng được xây dựng để hỗ trợ quản lý học sinh trong quá trình học, theo dõi tiến độ đào tạo, tình trạng nộp học phí, hạng bằng đang theo học và lịch chạy DAT đã đặt trước.
 
 Mục tiêu của ứng dụng là giúp người quản lý dễ dàng:
 - Lưu trữ thông tin học sinh
@@ -10,6 +10,7 @@ Mục tiêu của ứng dụng là giúp người quản lý dễ dàng:
 - Lọc và tìm kiếm học sinh theo nhiều tiêu chí
 - Quản lý tài khoản đăng nhập theo thời hạn sử dụng
 - Theo dõi học viên theo hạng bằng
+- Đặt và theo dõi lịch học DAT
 
 ---
 
@@ -40,17 +41,53 @@ Các loại bằng hỗ trợ:
 - **Đã chạy DAT được bao nhiêu km**
 - **Đã học sa hình hay chưa**
 
+### 2.4. Lịch học DAT
+- **Ngày học DAT**
+- **Giờ học DAT**
+- **Ghi chú buổi học**
+- **Học viên tham gia buổi DAT**
+
 ---
 
-## 3. Chức năng chính
+## 3. Cấu trúc màn hình chính theo tab
+Ứng dụng được tách thành 3 tab chính:
 
-### 3.1. Quản lý danh sách học sinh
+### 3.1. Tab Tiến độ học viên
+- Hiển thị các thanh bar tiến độ học viên theo từng phần
+- Bao gồm các nhóm như:
+  - Đã hoàn thành lý thuyết
+  - Đã học sa hình
+  - Đã đạt DAT
+  - Đã hoàn tất học phí
+- Khi bấm vào một mục bất kỳ, hệ thống sẽ **chuyển sang tab Danh sách học viên**
+- Đồng thời tự động áp bộ lọc để chỉ hiển thị đúng nhóm học viên thuộc mục đó
+
+### 3.2. Tab Lịch học
+- Dùng để quản lý lịch học chạy DAT của học viên
+- Người dùng có thể đặt lịch DAT và thêm học viên vào lịch
+- Chỉ cho phép đặt lịch DAT khi học viên **đã hoàn thành lý thuyết**
+- Tab này gồm 3 vùng chính:
+  - **Vùng 1**: lịch học ngày hôm nay
+  - **Vùng 2**: lịch học ngày mai
+  - **Vùng 3**: tab hiển thị lịch tổng hợp để xem toàn bộ hoặc lọc theo hôm nay/ngày mai
+
+### 3.3. Tab Danh sách học viên
+- Có chức năng lọc học viên
+- Có chức năng thêm học viên
+- Có thể xem chi tiết, sửa, xóa học viên
+- Khi tra cứu học viên, nếu học viên đã hoàn thành lý thuyết thì sẽ có thêm chức năng **Đặt lịch DAT** ngay trong danh sách
+
+---
+
+## 4. Chức năng chính
+
+### 4.1. Quản lý danh sách học sinh
 - Thêm học sinh mới
 - Sửa thông tin học sinh
 - Xóa học sinh
 - Xem chi tiết từng học sinh
 
-### 3.2. Quản lý tài chính
+### 4.2. Quản lý tài chính
 - Cập nhật số tiền học sinh đã nộp
 - Tự động tính số tiền còn thiếu
 - Hiển thị nhanh trạng thái thanh toán của từng học sinh
@@ -60,13 +97,13 @@ Ví dụ:
 - Đã nộp: 6.000.000 VNĐ
 - Còn thiếu: 4.000.000 VNĐ
 
-### 3.3. Quản lý tiến độ học tập
+### 4.3. Quản lý tiến độ học tập
 - Đánh dấu học sinh đã hoàn thành phần lý thuyết
 - Nhập số km DAT đã chạy
 - Đánh dấu học sinh đã học sa hình hay chưa
 - Hỗ trợ theo dõi tổng quan để biết học sinh đang ở giai đoạn nào
 
-### 3.4. Tìm kiếm và lọc dữ liệu
+### 4.4. Tìm kiếm và lọc dữ liệu
 Ứng dụng cần có chức năng lọc học sinh theo các tiêu chí như:
 - Những người **đã học lý thuyết**
 - Những người **chưa học lý thuyết**
@@ -81,17 +118,23 @@ Ngoài ra có thể có ô tìm kiếm nhanh theo:
 - Tên
 - Số CCCD
 
+### 4.5. Quản lý lịch học DAT
+- Tạo lịch học DAT mới
+- Chọn học viên đủ điều kiện để xếp lịch
+- Xem lịch hôm nay, ngày mai và toàn bộ lịch
+- Xóa lịch đã tạo khi cần điều chỉnh
+
 ---
 
-## 4. Màn hình đăng nhập
+## 5. Màn hình đăng nhập
 Ứng dụng có **màn hình đăng nhập** để người dùng truy cập hệ thống.
 
-### 4.1. Chức năng đăng nhập
+### 5.1. Chức năng đăng nhập
 - Nhập tên đăng nhập
 - Nhập mật khẩu
 - Đăng nhập vào hệ thống
 
-### 4.2. Loại tài khoản đăng nhập
+### 5.2. Loại tài khoản đăng nhập
 Hệ thống hỗ trợ các loại tài khoản sau:
 
 #### a. Tài khoản dùng thử 7 ngày
@@ -103,104 +146,26 @@ Hệ thống hỗ trợ các loại tài khoản sau:
 - Không giới hạn thời gian sử dụng
 - Dành cho người dùng đã mua bản chính thức
 
-### 4.3. Thông tin hiển thị sau đăng nhập
-Sau khi đăng nhập, hệ thống có thể hiển thị:
-- Tên tài khoản
-- Loại tài khoản
-- Thời hạn còn lại đối với tài khoản 7 ngày
-
 ---
 
-## 5. Định hướng thiết kế UI
+## 6. Định hướng thiết kế UI
 UI cần được thiết kế theo phong cách:
 - **Trẻ trung**
 - **Năng động**
 - **Hiện đại**
 - **Dễ nhìn, dễ thao tác**
 
-### 5.1. Gợi ý phong cách giao diện
-- Sử dụng màu sắc tươi sáng, hiện đại
-- Bố cục gọn gàng, có khoảng trắng hợp lý
-- Card thông tin rõ ràng cho từng học sinh
-- Các nút thao tác nổi bật như: Thêm, Sửa, Lọc, Lưu
-- Form nhập liệu đơn giản, trực quan
-- Có thống kê nhanh bằng thẻ thông tin hoặc biểu đồ nhỏ
-
-### 5.2. Gợi ý màn hình chính
-Màn hình chính có thể gồm:
-- Thanh tiêu đề
-- Khu vực tìm kiếm và bộ lọc
-- Danh sách học sinh dạng bảng hoặc card
-- Khu vực thống kê nhanh như:
-  - Tổng số học sinh
-  - Số học sinh đã hoàn thành lý thuyết
-  - Số học sinh còn thiếu học phí
-  - Số học sinh đã học sa hình
-  - Số học sinh đã đạt mức DAT
-
-### 5.3. Tối ưu cho điện thoại 6.5 - 7 inch
+### 6.1. Tối ưu cho điện thoại 6.5 - 7 inch
 - Giao diện cần ưu tiên hiển thị tốt trên màn hình điện thoại cỡ 6.5 đến 7 inch
-- Các ô thống kê nhanh phải hiển thị dạng **ô vuông** để dễ chạm và dễ đọc
-- Khi chạm vào từng ô thống kê, hệ thống sẽ **tự động áp bộ lọc** theo tiêu chí của ô đó
-- Bộ lọc và form nhập liệu cần xếp lại hợp lý để thao tác tốt bằng một tay
-- Khu vực đầu trang cần gọn, nút đăng xuất thu nhỏ về góc trên cùng bên phải để không chiếm nhiều diện tích
-- Màn hình chính cần ưu tiên hiển thị một vùng chức năng rõ ràng, không để phần điều khiển đầu trang chiếm quá nhiều chiều cao
-- Có thêm **thanh tiến độ tổng hợp** để hiển thị số học viên đã đạt từng phần như: lý thuyết, sa hình, DAT và học phí
-- Khi bấm vào một ô hoặc một thanh tiến độ, danh sách học viên bên dưới phải đổi ngay sang đúng nhóm đã chọn
+- Các tab phải rõ ràng, dễ bấm, dễ chuyển đổi
+- Một thời điểm chỉ nên tập trung vào một vùng chức năng chính
+- Khu vực đầu trang cần gọn, nút đăng xuất thu nhỏ để không chiếm nhiều diện tích
+- Các thanh tiến độ và ô lịch cần dễ đọc, dễ chạm
+- Khi bấm vào thanh tiến độ thì danh sách học viên phải đổi ngay theo bộ lọc tương ứng
 
 ---
 
-## 6. Cấu trúc chức năng hệ thống
-
-### 6.1. Các module chính
-- **Authentication**: quản lý đăng nhập, loại tài khoản, thời hạn sử dụng
-- **Student Management**: quản lý thông tin học sinh
-- **Payment Management**: quản lý trạng thái nộp tiền
-- **Learning Progress Management**: quản lý tiến độ học tập
-- **Filter & Search**: lọc và tìm kiếm dữ liệu
-
----
-
-## 7. Cấu trúc thư mục đề xuất
-Các file **logic hoạt động** và **UI** cần được tách riêng ở các folder khác nhau để dễ quản lý, bảo trì và mở rộng.
-
-Ví dụ cấu trúc thư mục:
-
-```text
-src/
-├── ui/
-│   ├── screens/
-│   │   ├── LoginScreen
-│   │   ├── StudentListScreen
-│   │   ├── StudentDetailScreen
-│   │   ├── StudentFormScreen
-│   │   └── DashboardScreen
-│   ├── components/
-│   │   ├── StudentCard
-│   │   ├── FilterBar
-│   │   ├── SearchBox
-│   │   ├── PaymentStatusTag
-│   │   └── ProgressStatusTag
-│   └── styles/
-│       ├── colors
-│       ├── typography
-│       └── theme
-│
-├── logic/
-│   ├── auth/
-│   ├── student/
-│   ├── payment/
-│   ├── progress/
-│   └── filter/
-│
-├── models/
-├── data/
-└── app/
-```
-
----
-
-## 8. Mô hình dữ liệu học sinh đề xuất
+## 7. Cấu trúc dữ liệu học sinh đề xuất
 
 ```json
 {
@@ -217,43 +182,34 @@ src/
 }
 ```
 
+## 8. Cấu trúc dữ liệu lịch học DAT đề xuất
+
+```json
+{
+  "id": "DAT001",
+  "studentId": "HS001",
+  "studentName": "Nguyễn Văn A",
+  "licenseType": "B tự động",
+  "date": "2026-04-12",
+  "time": "08:00",
+  "note": "Ca sáng sân tập A"
+}
+```
+
 ---
 
 ## 9. Luồng sử dụng cơ bản
 1. Người dùng mở ứng dụng
 2. Đăng nhập bằng tài khoản hợp lệ
-3. Truy cập màn hình danh sách học sinh
-4. Tìm kiếm hoặc lọc học sinh theo nhu cầu
-5. Chọn học sinh để xem chi tiết
-6. Cập nhật thông tin thanh toán, loại bằng hoặc tiến độ học
-7. Lưu dữ liệu
+3. Xem tab Tiến độ học viên để nắm tổng quan
+4. Chạm vào một thanh tiến độ để chuyển sang tab Danh sách học viên đã lọc
+5. Chọn học viên đủ điều kiện để đặt lịch DAT
+6. Chuyển sang tab Lịch học để xem lịch hôm nay, ngày mai hoặc toàn bộ lịch
+7. Lưu và tiếp tục quản lý dữ liệu
 
 ---
 
-## 10. Mở rộng trong tương lai
-Ứng dụng có thể mở rộng thêm các chức năng như:
-- Phân quyền người dùng
-- Gửi thông báo nhắc học phí
-- Thống kê doanh thu
-- Báo cáo tiến độ học sinh
-- Xuất Excel hoặc PDF
-- Đồng bộ dữ liệu cloud
-- Quản lý lịch học và lịch thi
-
----
-
-## 11. Kết luận
-Đây là một ứng dụng quản lý học sinh tập trung vào bốn nhóm chức năng chính:
-- Quản lý thông tin cá nhân
-- Quản lý loại bằng đào tạo
-- Quản lý học phí
-- Quản lý tiến độ học tập
-
-Ứng dụng cần có giao diện trẻ trung, năng động, dễ sử dụng, hỗ trợ lọc dữ liệu hiệu quả và đặc biệt phải tối ưu tốt cho điện thoại để kiểm tra nhanh trên thiết bị di động.
-
----
-
-## 12. Ghi chú cập nhật
+## 10. Ghi chú cập nhật
 - Sau các lần chỉnh sửa giao diện hoặc chức năng, tài liệu mô tả cần được cập nhật đồng thời.
 - Mỗi lần sửa xong cần commit và push ngay để có thể kiểm tra nhanh trên điện thoại qua link web.
 - Nếu gặp hiện tượng trang trắng khi mở web, cần ưu tiên kiểm tra các file `entry` và `screen` để tránh lỗi import hoặc ghi nhầm nội dung file.

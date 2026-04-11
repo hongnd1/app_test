@@ -11,23 +11,19 @@ function formatCurrency(value) {
   }).format(value);
 }
 
-function createStatCard(config, onClick) {
-  const element = document.createElement("button");
-  element.type = "button";
-  element.className = `stat-card ${config.accent} ${config.activeStatFilter === config.statKey ? "is-active" : ""}`;
-  element.innerHTML = `
-    <p>${config.label}</p>
-    <strong>${config.value}</strong>
-    <span class="stat-card__hint">${config.helper}</span>
-  `;
-  element.addEventListener("click", () => onClick(config.statKey));
-  return element;
-}
-
-function createProgressBar(item, onClick, activeStatFilter) {
+function createTabButton(label, key, activeKey, onClick) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `progress-row ${activeStatFilter === item.key ? "is-active" : ""}`;
+  button.className = `tab-button ${activeKey === key ? "is-active" : ""}`;
+  button.textContent = label;
+  button.addEventListener("click", () => onClick(key));
+  return button;
+}
+
+function createProgressBar(item, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "progress-row";
   button.innerHTML = `
     <div class="progress-row__header">
       <strong>${item.label}</strong>
@@ -42,127 +38,192 @@ function createProgressBar(item, onClick, activeStatFilter) {
   return button;
 }
 
-export function DashboardScreen(root, props) {
-  const container = document.createElement("main");
-  container.className = "dashboard-screen compact-dashboard";
-
-  const remainingInfo =
-    props.session.accountType === "trial"
-      ? `Còn ${props.session.remainingDays} ngày`
-      : "Vĩnh viễn";
-
-  container.innerHTML = `
-    <header class="topbar compact-topbar">
+function createScheduleCard(schedule, actions) {
+  const card = document.createElement("article");
+  card.className = "schedule-card";
+  card.innerHTML = `
+    <div class="schedule-card__header">
       <div>
-        <p class="eyebrow">BLX Student Manager</p>
-        <h1>Bảng điều khiển</h1>
-        <span class="topbar__meta">${props.session.displayName} · ${remainingInfo}</span>
+        <p class="eyebrow">${schedule.time}</p>
+        <h3>${schedule.studentName}</h3>
+        <p class="muted">${schedule.licenseType} · ${schedule.date}</p>
       </div>
-      <div class="topbar__actions">
-        <button class="primary-button add-button" type="button">Thêm học sinh</button>
-        <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
-      </div>
-    </header>
-    <section class="progress-panel">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Tiến độ tổng hợp</p>
-          <h2>Học viên đã đạt từng phần</h2>
-        </div>
-      </div>
-      <div class="progress-grid"></div>
-    </section>
-    <section class="stats-grid"></section>
-    <section class="toolbar compact-toolbar">
+      <button class="ghost-danger-button compact-button" type="button">Xóa</button>
+    </div>
+    <p class="schedule-note">${schedule.note || "Chưa có ghi chú"}</p>
+  `;
+  card.querySelector("button").addEventListener("click", () => actions.onDelete(schedule.id));
+  return card;
+}
+
+function renderScheduleList(title, schedules, actions) {
+  const section = document.createElement("section");
+  section.className = "schedule-block";
+  section.innerHTML = `<div class="section-heading"><h2>${title}</h2></div>`;
+
+  const list = document.createElement("div");
+  list.className = "schedule-list";
+
+  if (!schedules.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.innerHTML = `<p>Chưa có lịch trong mục này.</p>`;
+    list.appendChild(empty);
+  } else {
+    schedules.forEach((schedule) => list.appendChild(createScheduleCard(schedule, actions)));
+  }
+
+  section.appendChild(list);
+  return section;
+}
+
+function createScheduleForm(student, handlers) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "panel schedule-form-panel";
+  wrapper.innerHTML = `
+    <div class="panel__header">
       <div>
-        <p class="eyebrow">Đang xem</p>
+        <p class="eyebrow">Đặt lịch DAT</p>
+        <h2>${student?.ten ?? "Chọn học viên"}</h2>
+      </div>
+      <button class="icon-button" type="button" aria-label="Đóng">×</button>
+    </div>
+    <form class="student-form">
+      <div class="form-grid">
+        <label class="field">
+          <span>Học viên</span>
+          <input type="text" value="${student ? `${student.ten} · ${student.loaiBang}` : ""}" disabled />
+        </label>
+        <label class="field">
+          <span>Ngày học DAT</span>
+          <input type="date" name="date" required />
+        </label>
+        <label class="field">
+          <span>Giờ học DAT</span>
+          <input type="time" name="time" required />
+        </label>
+        <label class="field">
+          <span>Ghi chú</span>
+          <input type="text" name="note" placeholder="Ví dụ: Ca sáng sân A" />
+        </label>
+      </div>
+      <p class="form-message" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="secondary-button">Hủy</button>
+        <button type="submit" class="primary-button">Lưu lịch DAT</button>
+      </div>
+    </form>
+  `;
+
+  const form = wrapper.querySelector("form");
+  const messageElement = wrapper.querySelector(".form-message");
+  wrapper.querySelector(".icon-button").addEventListener("click", handlers.onClose);
+  wrapper.querySelector(".secondary-button").addEventListener("click", handlers.onClose);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const result = handlers.onSave({
+      studentId: student?.id,
+      date: formData.get("date"),
+      time: formData.get("time"),
+      note: formData.get("note"),
+    });
+
+    if (!result.success) {
+      messageElement.hidden = false;
+      messageElement.textContent = result.message;
+      return;
+    }
+
+    messageElement.hidden = true;
+  });
+
+  return wrapper;
+}
+
+function renderProgressTab(container, props) {
+  const section = document.createElement("section");
+  section.className = "tab-panel active";
+  section.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Tiến độ học viên</p>
+        <h2>Chạm để chuyển sang danh sách đã lọc</h2>
+      </div>
+    </div>
+  `;
+
+  const grid = document.createElement("div");
+  grid.className = "progress-grid";
+  props.progressOverview.forEach((item) => grid.appendChild(createProgressBar(item, props.onStatFilter)));
+  section.appendChild(grid);
+  container.appendChild(section);
+}
+
+function renderScheduleTab(container, props) {
+  const section = document.createElement("section");
+  section.className = "tab-panel active";
+  section.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Lịch học</p>
+        <h2>Lịch chạy DAT của học viên</h2>
+      </div>
+    </div>
+  `;
+
+  const overview = document.createElement("div");
+  overview.className = "schedule-overview-grid";
+  overview.append(
+    renderScheduleList("Hôm nay", props.scheduleBuckets.today, { onDelete: props.onDeleteSchedule }),
+    renderScheduleList("Ngày mai", props.scheduleBuckets.tomorrow, { onDelete: props.onDeleteSchedule }),
+  );
+  section.appendChild(overview);
+
+  const tabs = document.createElement("div");
+  tabs.className = "tab-strip sub-tabs";
+  tabs.append(
+    createTabButton("Tất cả", "all", props.filters.scheduleListTab, props.onChangeScheduleListTab),
+    createTabButton("Hôm nay", "today", props.filters.scheduleListTab, props.onChangeScheduleListTab),
+    createTabButton("Ngày mai", "tomorrow", props.filters.scheduleListTab, props.onChangeScheduleListTab),
+  );
+  section.appendChild(tabs);
+
+  const selectedSchedules = props.scheduleBuckets[props.filters.scheduleListTab] ?? props.scheduleBuckets.all;
+  section.appendChild(renderScheduleList("Danh sách lịch DAT", selectedSchedules, { onDelete: props.onDeleteSchedule }));
+
+  if (props.scheduleStudent) {
+    const modal = document.createElement("div");
+    modal.className = "modal-shell";
+    modal.appendChild(
+      createScheduleForm(props.scheduleStudent, {
+        onClose: props.onCloseScheduleForm,
+        onSave: props.onSaveSchedule,
+      }),
+    );
+    section.appendChild(modal);
+  }
+
+  container.appendChild(section);
+}
+
+function renderStudentsTab(container, props) {
+  const section = document.createElement("section");
+  section.className = "tab-panel active";
+  section.innerHTML = `
+    <div class="toolbar compact-toolbar sticky-toolbar">
+      <div>
+        <p class="eyebrow">Danh sách học viên</p>
         <h2>${props.activeFilterLabel}</h2>
         <p>${props.students.length} / ${props.totalStudents} học sinh đang hiển thị</p>
       </div>
-    </section>
+      <button class="primary-button" type="button">Thêm học sinh</button>
+    </div>
   `;
+  section.querySelector(".primary-button").addEventListener("click", props.onOpenCreateForm);
 
-  const logoutButton = container.querySelector(".icon-logout-button");
-  const addStudentButton = container.querySelector(".add-button");
-  logoutButton.addEventListener("click", props.onLogout);
-  addStudentButton.addEventListener("click", props.onOpenCreateForm);
-
-  const progressGrid = container.querySelector(".progress-grid");
-  props.progressOverview.forEach((item) => {
-    progressGrid.appendChild(createProgressBar(item, props.onStatFilter, props.filters.activeStatFilter));
-  });
-
-  const statsGrid = container.querySelector(".stats-grid");
-  statsGrid.append(
-    createStatCard(
-      {
-        label: "Tổng học sinh",
-        value: props.totalStudents,
-        accent: "orange",
-        statKey: "all",
-        activeStatFilter: props.filters.activeStatFilter,
-        helper: "Hiện toàn bộ",
-      },
-      props.onStatFilter,
-    ),
-    createStatCard(
-      {
-        label: "Đã học lý thuyết",
-        value: props.statistics.theoryCompleted,
-        accent: "cyan",
-        statKey: "theoryCompleted",
-        activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc ngay",
-      },
-      props.onStatFilter,
-    ),
-    createStatCard(
-      {
-        label: "Còn thiếu học phí",
-        value: props.statistics.unpaid,
-        accent: "red",
-        statKey: "unpaid",
-        activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc ngay",
-      },
-      props.onStatFilter,
-    ),
-    createStatCard(
-      {
-        label: "Đã học sa hình",
-        value: props.statistics.saHinhCompleted,
-        accent: "green",
-        statKey: "saHinhCompleted",
-        activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc ngay",
-      },
-      props.onStatFilter,
-    ),
-    createStatCard(
-      {
-        label: "DAT đạt mức",
-        value: props.statistics.datReached,
-        accent: "blue",
-        statKey: "datReached",
-        activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc ngay",
-      },
-      props.onStatFilter,
-    ),
-    createStatCard(
-      {
-        label: "Đã đủ học phí",
-        value: props.progressOverview.find((item) => item.key === "paidCompleted")?.count ?? 0,
-        accent: "yellow",
-        statKey: "paidCompleted",
-        activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc ngay",
-      },
-      props.onStatFilter,
-    ),
-  );
-
-  container.appendChild(
+  section.appendChild(
     createFilterBar(props.filters, {
       onChange: props.onFilterChange,
     }),
@@ -171,12 +232,12 @@ export function DashboardScreen(root, props) {
   const list = document.createElement("section");
   list.className = "student-list";
 
-  if (props.students.length === 0) {
+  if (!props.students.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.innerHTML = `
       <h3>Không có học sinh phù hợp</h3>
-      <p>Thử đổi bộ lọc hoặc chọn mục khác để xem danh sách.</p>
+      <p>Thử đổi bộ lọc hoặc chọn nhóm khác.</p>
     `;
     list.appendChild(empty);
   } else {
@@ -186,12 +247,13 @@ export function DashboardScreen(root, props) {
           onOpenDetail: props.onOpenDetail,
           onEdit: props.onOpenEditForm,
           onDelete: props.onDeleteStudent,
+          onSchedule: props.onOpenScheduleForm,
         }),
       );
     });
   }
 
-  container.appendChild(list);
+  section.appendChild(list);
 
   if (props.filters.formMode === "create" || props.editingStudent) {
     const modal = document.createElement("div");
@@ -202,7 +264,7 @@ export function DashboardScreen(root, props) {
         onSave: props.onSaveStudent,
       }),
     );
-    container.appendChild(modal);
+    section.appendChild(modal);
   }
 
   if (props.detailStudent) {
@@ -217,7 +279,52 @@ export function DashboardScreen(root, props) {
         },
       }),
     );
-    container.appendChild(modal);
+    section.appendChild(modal);
+  }
+
+  container.appendChild(section);
+}
+
+export function DashboardScreen(root, props) {
+  const container = document.createElement("main");
+  container.className = "dashboard-screen tabbed-dashboard";
+
+  const remainingInfo =
+    props.session.accountType === "trial"
+      ? `Còn ${props.session.remainingDays} ngày`
+      : "Vĩnh viễn";
+
+  container.innerHTML = `
+    <header class="topbar compact-topbar">
+      <div>
+        <p class="eyebrow">BLX Student Manager</p>
+        <h1>Quản lý đào tạo</h1>
+        <span class="topbar__meta">${props.session.displayName} · ${remainingInfo}</span>
+      </div>
+      <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
+    </header>
+    <nav class="tab-strip main-tabs"></nav>
+    <section class="tab-content"></section>
+  `;
+
+  container.querySelector(".icon-logout-button").addEventListener("click", props.onLogout);
+
+  const tabStrip = container.querySelector(".main-tabs");
+  tabStrip.append(
+    createTabButton("Tiến độ học viên", "progress", props.filters.activeTab, props.onChangeTab),
+    createTabButton("Lịch học", "schedule", props.filters.activeTab, props.onChangeTab),
+    createTabButton("Danh sách học viên", "students", props.filters.activeTab, props.onChangeTab),
+  );
+
+  const content = container.querySelector(".tab-content");
+  if (props.filters.activeTab === "progress") {
+    renderProgressTab(content, props);
+  }
+  if (props.filters.activeTab === "schedule") {
+    renderScheduleTab(content, props);
+  }
+  if (props.filters.activeTab === "students") {
+    renderStudentsTab(content, props);
   }
 
   root.appendChild(container);
