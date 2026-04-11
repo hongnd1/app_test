@@ -61,7 +61,7 @@ button { cursor: pointer; border: none; }
   padding: 14px 16px;
   color: var(--text);
 }
-.primary-button, .secondary-button, .ghost-danger-button, .icon-button, .icon-logout-button, .bottom-tab {
+.primary-button, .secondary-button, .ghost-danger-button, .icon-button, .icon-logout-button, .bottom-tab, .logout-button {
   border-radius: 999px;
   padding: 12px 18px;
   font-weight: 700;
@@ -71,7 +71,18 @@ button { cursor: pointer; border: none; }
 .secondary-button { background: rgba(31, 142, 241, 0.12); color: var(--secondary); }
 .ghost-danger-button { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
 .icon-button, .icon-logout-button {
-  width: 44px; height: 44px; padding: 0; background: rgba(24, 49, 83, 0.08); color: var(--text); font-size: 1.2rem; line-height: 1;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: rgba(24, 49, 83, 0.08);
+  color: var(--text);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.logout-button {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  min-width: 124px;
 }
 .compact-topbar, .student-card__footer, .student-card__header, .student-card__body, .panel__header, .form-actions, .metric-row, .progress-row__header, .schedule-card__header, .toolbar, .calendar-header, .section-heading {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
@@ -274,3 +285,5 @@ button { cursor: pointer; border: none; }
     width: 100%;
   }
 }
+
+

@@ -56,7 +56,8 @@ Tab này dùng để quản lý lịch chạy DAT của học viên.
 - Chỉ cho phép đặt lịch DAT cho học viên đã hoàn thành lý thuyết
 - Có thể thêm học viên vào ngày đang được chọn trên lịch
 - Khi bấm vào ngày nào cũng phải có nút **Thêm lịch học**
-- Nếu trùng giờ trong cùng ngày thì phải cảnh báo
+- Mỗi lịch DAT là một **khoảng thời gian**, ví dụ `06:00 - 09:00`
+- Nếu trùng khoảng giờ trong cùng ngày thì phải cảnh báo
 - Giờ học chỉ được phép trong khoảng **06:00 - 21:00**
 
 ---
@@ -146,3 +147,6 @@ Mỗi lịch học DAT cần có:
 - Màn hình đăng nhập không hiển thị sẵn tên tài khoản và mật khẩu mẫu.
 - Màn hình chào hiển thị nội dung giới thiệu lớp học của Thầy Tuấn Anh.
 - Topbar hiển thị dạng `Xin chào ...` và có dòng bản quyền thiết kế bởi Nguyễn Đình Hồng.
+- Nút `Đăng xuất` phải hiển thị rõ chữ và có màu đỏ nổi bật để dễ nhận biết.
+
+

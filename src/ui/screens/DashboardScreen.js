@@ -149,8 +149,12 @@ function createScheduleForm(student, students, selectedDate, handlers) {
           <input type="date" name="date" value="${selectedDate}" required />
         </label>
         <label class="field">
-          <span>Giờ học DAT</span>
-          <input type="time" name="time" required />
+          <span>Giờ bắt đầu</span>
+          <input type="time" name="startTime" required />
+        </label>
+        <label class="field">
+          <span>Giờ kết thúc</span>
+          <input type="time" name="endTime" required />
         </label>
         <label class="field">
           <span>Ghi chú</span>
@@ -176,7 +180,8 @@ function createScheduleForm(student, students, selectedDate, handlers) {
     const result = handlers.onSave({
       studentId: formData.get("studentId"),
       date: formData.get("date"),
-      time: formData.get("time"),
+      startTime: formData.get("startTime"),
+      endTime: formData.get("endTime"),
       note: formData.get("note"),
     });
 
@@ -444,13 +449,13 @@ export function DashboardScreen(root, props) {
         <h1>Quản lý đào tạo</h1>
         <span class="topbar__meta">Xin chào ${props.session.displayName} · ${remainingInfo}</span>
       </div>
-      <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
+      <button class="logout-button" type="button" aria-label="Đăng xuất">Đăng xuất</button>
     </header>
     <section class="tab-content"></section>
     <nav class="bottom-tabbar"></nav>
   `;
 
-  container.querySelector(".icon-logout-button").addEventListener("click", props.onLogout);
+  container.querySelector(".logout-button").addEventListener("click", props.onLogout);
 
   const content = container.querySelector(".tab-content");
   if (props.filters.activeTab === "progress") {

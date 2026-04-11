@@ -5,7 +5,8 @@
     studentName: "Nguyễn Văn An",
     licenseType: "B tự động",
     date: new Date().toISOString().slice(0, 10),
-    time: "08:00",
+    startTime: "08:00",
+    endTime: "10:00",
     note: "Ca sáng sân tập A",
   },
   {
@@ -14,7 +15,8 @@
     studentName: "Phạm Thanh Hà",
     licenseType: "D",
     date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    time: "14:00",
+    startTime: "14:00",
+    endTime: "16:00",
     note: "Ca chiều tuyến 2",
   },
 ];

@@ -5,7 +5,7 @@ import { scheduleValidator } from "./scheduleValidator.js";
 function normalizeSchedules(items) {
   return items
     .map((item) => createScheduleModel(item))
-    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+    .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
 }
 
 function generateScheduleId(schedules) {
@@ -27,8 +27,6 @@ function todayString(offsetDays = 0) {
 function getCalendarDays(month, year, schedules, selectedDate) {
   const firstDay = new Date(year, month, 1);
   const startWeekDay = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const prevMonthDays = new Date(year, month, 0).getDate();
   const items = [];
 
   for (let index = 0; index < 42; index += 1) {
@@ -61,7 +59,8 @@ export const scheduleService = {
       studentName: student?.ten,
       licenseType: student?.loaiBang,
       date: payload.date,
-      time: payload.time,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
       note: payload.note,
     });
 
