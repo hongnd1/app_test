@@ -1,4 +1,4 @@
-import { paymentService } from "../../logic/payment/paymentService.js";
+﻿import { paymentService } from "../../logic/payment/paymentService.js";
 import { progressService } from "../../logic/progress/progressService.js";
 import { createStatusTag } from "./StatusTag.js";
 
@@ -22,7 +22,7 @@ export function createStudentCard(student, actions) {
     <div>
       <p class="eyebrow">${student.id}</p>
       <h3>${student.ten}</h3>
-      <p class="muted">${student.cccd}</p>
+      <p class="muted">${student.cccd} · Hạng ${student.loaiBang}</p>
     </div>
   `;
 
@@ -30,11 +30,11 @@ export function createStudentCard(student, actions) {
   body.className = "student-card__body";
   body.innerHTML = `
     <div class="metric-row">
-      <span>Da nop</span>
+      <span>Đã nộp</span>
       <strong>${formatCurrency(student.daNop)}</strong>
     </div>
     <div class="metric-row">
-      <span>Con thieu</span>
+      <span>Còn thiếu</span>
       <strong>${formatCurrency(student.conThieu)}</strong>
     </div>
     <div class="metric-row">
@@ -48,12 +48,13 @@ export function createStudentCard(student, actions) {
   statusGroup.className = "student-card__status";
   statusGroup.append(
     createStatusTag(paymentStatus),
+    createStatusTag({ label: `Hạng ${student.loaiBang}`, tone: "info" }),
     createStatusTag({
-      label: student.daHocLyThuyet ? "Da hoc ly thuyet" : "Chua hoc ly thuyet",
+      label: student.daHocLyThuyet ? "Đã học lý thuyết" : "Chưa học lý thuyết",
       tone: student.daHocLyThuyet ? "success" : "danger",
     }),
     createStatusTag({
-      label: student.daHocSaHinh ? "Da hoc sa hinh" : "Chua hoc sa hinh",
+      label: student.daHocSaHinh ? "Đã học sa hình" : "Chưa học sa hình",
       tone: student.daHocSaHinh ? "success" : "warning",
     }),
     createStatusTag(datStatus),
@@ -64,17 +65,17 @@ export function createStudentCard(student, actions) {
 
   const detailButton = document.createElement("button");
   detailButton.className = "secondary-button";
-  detailButton.textContent = "Chi tiet";
+  detailButton.textContent = "Chi tiết";
   detailButton.addEventListener("click", () => actions.onOpenDetail(student.id));
 
   const editButton = document.createElement("button");
   editButton.className = "secondary-button";
-  editButton.textContent = "Sua";
+  editButton.textContent = "Sửa";
   editButton.addEventListener("click", () => actions.onEdit(student.id));
 
   const deleteButton = document.createElement("button");
   deleteButton.className = "ghost-danger-button";
-  deleteButton.textContent = "Xoa";
+  deleteButton.textContent = "Xóa";
   deleteButton.addEventListener("click", () => actions.onDelete(student.id));
 
   footer.append(detailButton, editButton, deleteButton);

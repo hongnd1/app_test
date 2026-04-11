@@ -1,4 +1,4 @@
-import { paymentService } from "../../logic/payment/paymentService.js";
+﻿import { paymentService } from "../../logic/payment/paymentService.js";
 import { progressService } from "../../logic/progress/progressService.js";
 
 function formatCurrency(value) {
@@ -17,14 +17,14 @@ export function createStudentDetail(student, handlers) {
   wrapper.innerHTML = `
     <div class="panel__header">
       <div>
-        <p class="eyebrow">Ho so hoc sinh</p>
+        <p class="eyebrow">Hồ sơ học sinh</p>
         <h2>${student.ten}</h2>
       </div>
-      <button class="icon-button" type="button" aria-label="Dong">×</button>
+      <button class="icon-button" type="button" aria-label="Đóng">×</button>
     </div>
     <div class="detail-grid">
       <div class="detail-card">
-        <span>Ma hoc sinh</span>
+        <span>Mã học sinh</span>
         <strong>${student.id}</strong>
       </div>
       <div class="detail-card">
@@ -32,15 +32,19 @@ export function createStudentDetail(student, handlers) {
         <strong>${student.cccd}</strong>
       </div>
       <div class="detail-card">
-        <span>Tong hoc phi</span>
+        <span>Loại bằng</span>
+        <strong>${student.loaiBang}</strong>
+      </div>
+      <div class="detail-card">
+        <span>Tổng học phí</span>
         <strong>${formatCurrency(student.tongHocPhi)}</strong>
       </div>
       <div class="detail-card">
-        <span>Da nop</span>
+        <span>Đã nộp</span>
         <strong>${formatCurrency(student.daNop)}</strong>
       </div>
       <div class="detail-card">
-        <span>Con thieu</span>
+        <span>Còn thiếu</span>
         <strong>${formatCurrency(student.conThieu)}</strong>
       </div>
       <div class="detail-card">
@@ -49,15 +53,15 @@ export function createStudentDetail(student, handlers) {
       </div>
     </div>
     <div class="detail-summary">
-      <p><strong>Thanh toan:</strong> ${paymentStatus.label}</p>
-      <p><strong>Ly thuyet:</strong> ${student.daHocLyThuyet ? "Da hoan thanh" : "Chua hoan thanh"}</p>
-      <p><strong>Sa hinh:</strong> ${student.daHocSaHinh ? "Da hoan thanh" : "Chua hoan thanh"}</p>
+      <p><strong>Thanh toán:</strong> ${paymentStatus.label}</p>
+      <p><strong>Lý thuyết:</strong> ${student.daHocLyThuyet ? "Đã hoàn thành" : "Chưa hoàn thành"}</p>
+      <p><strong>Sa hình:</strong> ${student.daHocSaHinh ? "Đã hoàn thành" : "Chưa hoàn thành"}</p>
       <p><strong>DAT:</strong> ${datStatus.label}</p>
-      <p><strong>Giai doan:</strong> ${progressService.getStageSummary(student)}</p>
+      <p><strong>Giai đoạn:</strong> ${progressService.getStageSummary(student)}</p>
     </div>
     <div class="form-actions">
-      <button type="button" class="secondary-button">Dong</button>
-      <button type="button" class="primary-button">Sua thong tin</button>
+      <button type="button" class="secondary-button">Đóng</button>
+      <button type="button" class="primary-button">Sửa thông tin</button>
     </div>
   `;
 

@@ -1,4 +1,4 @@
-import { accountService } from "../logic/auth/accountService.js";
+﻿import { accountService } from "../logic/auth/accountService.js";
 import { loginService } from "../logic/auth/loginService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
@@ -18,7 +18,9 @@ const state = {
     saHinhFilter: "all",
     paymentFilter: "all",
     datFilter: "all",
+    licenseFilter: "all",
     minPaidAmount: "",
+    activeStatFilter: "all",
     editingStudentId: null,
     detailStudentId: null,
     formMode: null,
@@ -91,7 +93,7 @@ function handleSaveStudent(formData) {
 }
 
 function handleDeleteStudent(studentId) {
-  const confirmed = window.confirm("Xoa hoc sinh nay khoi danh sach?");
+  const confirmed = window.confirm("Xóa học sinh này khỏi danh sách?");
   if (!confirmed) {
     return;
   }
@@ -116,8 +118,44 @@ function getFilteredStudents() {
     saHinh: state.ui.saHinhFilter,
     payment: state.ui.paymentFilter,
     dat: state.ui.datFilter,
+    licenseFilter: state.ui.licenseFilter,
     minPaidAmount: state.ui.minPaidAmount,
   });
+}
+
+function handleStatFilter(statKey) {
+  const nextKey = state.ui.activeStatFilter === statKey ? "all" : statKey;
+  const nextFilters = {
+    theoryFilter: "all",
+    saHinhFilter: "all",
+    paymentFilter: "all",
+    datFilter: "all",
+    licenseFilter: "all",
+    minPaidAmount: "",
+    activeStatFilter: nextKey,
+  };
+
+  if (nextKey === "theoryCompleted") {
+    nextFilters.theoryFilter = "done";
+  }
+
+  if (nextKey === "unpaid") {
+    nextFilters.paymentFilter = "debt";
+  }
+
+  if (nextKey === "saHinhCompleted") {
+    nextFilters.saHinhFilter = "done";
+  }
+
+  if (nextKey === "datReached") {
+    nextFilters.datFilter = "reached";
+  }
+
+  if (nextKey === "totalRevenue") {
+    nextFilters.minPaidAmount = "1";
+  }
+
+  updateUi(nextFilters);
 }
 
 function render() {
@@ -159,6 +197,7 @@ function render() {
     onDeleteStudent: handleDeleteStudent,
     onOpenDetail: openDetail,
     onCloseDetail: closeDetail,
+    onStatFilter: handleStatFilter,
   });
 }
 

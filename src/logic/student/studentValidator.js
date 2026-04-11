@@ -1,24 +1,28 @@
 export const studentValidator = {
   validate(student) {
     if (!student.ten?.trim()) {
-      return { valid: false, message: "Ten hoc sinh khong duoc de trong." };
+      return { valid: false, message: "Tên học sinh không được để trống." };
     }
 
     if (!/^\d{12}$/.test(student.cccd?.trim() ?? "")) {
-      return { valid: false, message: "CCCD phai gom dung 12 chu so." };
+      return { valid: false, message: "CCCD phải gồm đúng 12 chữ số." };
+    }
+
+    if (!student.loaiBang?.trim()) {
+      return { valid: false, message: "Vui lòng chọn loại bằng." };
     }
 
     if (Number(student.tongHocPhi) < 0 || Number(student.daNop) < 0 || Number(student.soKmDAT) < 0) {
       return {
         valid: false,
-        message: "Hoc phi, so tien da nop va km DAT phai la so khong am.",
+        message: "Học phí, số tiền đã nộp và km DAT phải là số không âm.",
       };
     }
 
     if (Number(student.daNop) > Number(student.tongHocPhi)) {
       return {
         valid: false,
-        message: "So tien da nop khong duoc lon hon tong hoc phi.",
+        message: "Số tiền đã nộp không được lớn hơn tổng học phí.",
       };
     }
 

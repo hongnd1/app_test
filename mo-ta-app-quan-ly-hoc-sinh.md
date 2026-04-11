@@ -1,7 +1,7 @@
-# Mô tả ứng dụng quản lý học sinh
+﻿# Mô tả ứng dụng quản lý học sinh
 
 ## 1. Tổng quan
-Ứng dụng được xây dựng để hỗ trợ quản lý học sinh trong quá trình học và theo dõi tiến độ học tập, thanh toán học phí, cũng như tình trạng hoàn thành các giai đoạn đào tạo.
+Ứng dụng được xây dựng để hỗ trợ quản lý học sinh trong quá trình học, theo dõi tiến độ đào tạo, tình trạng nộp học phí và hạng bằng đang theo học.
 
 Mục tiêu của ứng dụng là giúp người quản lý dễ dàng:
 - Lưu trữ thông tin học sinh
@@ -9,6 +9,7 @@ Mục tiêu của ứng dụng là giúp người quản lý dễ dàng:
 - Theo dõi tiến độ học tập của từng học sinh
 - Lọc và tìm kiếm học sinh theo nhiều tiêu chí
 - Quản lý tài khoản đăng nhập theo thời hạn sử dụng
+- Theo dõi học viên theo hạng bằng
 
 ---
 
@@ -18,6 +19,16 @@ Mỗi học sinh sẽ có các trường thông tin chính như sau:
 ### 2.1. Thông tin cơ bản
 - **Tên học sinh**
 - **Số CCCD**
+- **Loại bằng**
+
+Các loại bằng hỗ trợ:
+- **A1**
+- **A2**
+- **B tự động**
+- **B số sàn**
+- **C1**
+- **D**
+- **E**
 
 ### 2.2. Thông tin tài chính
 - **Tổng số tiền cần nộp**
@@ -64,6 +75,7 @@ Ví dụ:
 - Những người **đã học sa hình**
 - Những người **chưa học sa hình**
 - Những người có **số km DAT đạt hoặc chưa đạt mức yêu cầu**
+- Những người theo **loại bằng cụ thể**
 
 Ngoài ra có thể có ô tìm kiếm nhanh theo:
 - Tên
@@ -124,6 +136,13 @@ Màn hình chính có thể gồm:
   - Số học sinh đã hoàn thành lý thuyết
   - Số học sinh còn thiếu học phí
   - Số học sinh đã học sa hình
+  - Số học sinh đã đạt mức DAT
+
+### 5.3. Tối ưu cho điện thoại 6.5 - 7 inch
+- Giao diện cần ưu tiên hiển thị tốt trên màn hình điện thoại cỡ 6.5 đến 7 inch
+- Các ô thống kê nhanh phải hiển thị dạng **ô vuông** để dễ chạm và dễ đọc
+- Khi chạm vào từng ô thống kê, hệ thống sẽ **tự động áp bộ lọc** theo tiêu chí của ô đó
+- Bộ lọc và form nhập liệu cần xếp lại hợp lý để thao tác tốt bằng một tay
 
 ---
 
@@ -165,34 +184,14 @@ src/
 │
 ├── logic/
 │   ├── auth/
-│   │   ├── loginService
-│   │   ├── accountService
-│   │   └── authValidator
 │   ├── student/
-│   │   ├── studentService
-│   │   ├── studentRepository
-│   │   └── studentValidator
 │   ├── payment/
-│   │   ├── paymentService
-│   │   └── paymentCalculator
 │   ├── progress/
-│   │   ├── progressService
-│   │   └── progressCalculator
 │   └── filter/
-│       ├── filterService
-│       └── searchService
 │
 ├── models/
-│   ├── Student
-│   ├── Account
-│   └── Payment
-│
 ├── data/
-│   ├── mock/
-│   └── database/
-│
 └── app/
-    └── main
 ```
 
 ---
@@ -204,6 +203,7 @@ src/
   "id": "HS001",
   "ten": "Nguyễn Văn A",
   "cccd": "012345678901",
+  "loaiBang": "B tự động",
   "tongHocPhi": 10000000,
   "daNop": 6000000,
   "conThieu": 4000000,
@@ -221,7 +221,7 @@ src/
 3. Truy cập màn hình danh sách học sinh
 4. Tìm kiếm hoặc lọc học sinh theo nhu cầu
 5. Chọn học sinh để xem chi tiết
-6. Cập nhật thông tin thanh toán hoặc tiến độ học
+6. Cập nhật thông tin thanh toán, loại bằng hoặc tiến độ học
 7. Lưu dữ liệu
 
 ---
@@ -239,9 +239,10 @@ src/
 ---
 
 ## 11. Kết luận
-Đây là một ứng dụng quản lý học sinh tập trung vào ba nhóm chức năng chính:
+Đây là một ứng dụng quản lý học sinh tập trung vào bốn nhóm chức năng chính:
 - Quản lý thông tin cá nhân
+- Quản lý loại bằng đào tạo
 - Quản lý học phí
 - Quản lý tiến độ học tập
 
-Ứng dụng cần có giao diện trẻ trung, năng động, dễ sử dụng và hỗ trợ lọc dữ liệu hiệu quả. Việc tách riêng thư mục **UI** và **logic** sẽ giúp hệ thống rõ ràng hơn, dễ phát triển lâu dài và thuận tiện cho việc bảo trì sau này.
+Ứng dụng cần có giao diện trẻ trung, năng động, dễ sử dụng, hỗ trợ lọc dữ liệu hiệu quả và đặc biệt phải tối ưu tốt cho điện thoại để kiểm tra nhanh trên thiết bị di động.

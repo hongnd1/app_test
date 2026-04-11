@@ -1,46 +1,59 @@
-export function createFilterBar(filters, handlers) {
+﻿export function createFilterBar(filters, handlers) {
   const wrapper = document.createElement("section");
   wrapper.className = "filter-bar";
 
   wrapper.innerHTML = `
     <label class="field">
-      <span>Tim nhanh</span>
-      <input type="search" name="searchTerm" placeholder="Nhap ten hoac CCCD" value="${filters.searchTerm}" />
+      <span>Tìm nhanh</span>
+      <input type="search" name="searchTerm" placeholder="Nhập tên hoặc CCCD" value="${filters.searchTerm}" />
     </label>
     <label class="field">
-      <span>Ly thuyet</span>
+      <span>Lý thuyết</span>
       <select name="theoryFilter">
-        <option value="all">Tat ca</option>
-        <option value="done">Da hoc</option>
-        <option value="pending">Chua hoc</option>
+        <option value="all">Tất cả</option>
+        <option value="done">Đã học</option>
+        <option value="pending">Chưa học</option>
       </select>
     </label>
     <label class="field">
-      <span>Sa hinh</span>
+      <span>Sa hình</span>
       <select name="saHinhFilter">
-        <option value="all">Tat ca</option>
-        <option value="done">Da hoc</option>
-        <option value="pending">Chua hoc</option>
+        <option value="all">Tất cả</option>
+        <option value="done">Đã học</option>
+        <option value="pending">Chưa học</option>
       </select>
     </label>
     <label class="field">
-      <span>Hoc phi</span>
+      <span>Học phí</span>
       <select name="paymentFilter">
-        <option value="all">Tat ca</option>
-        <option value="paid">Da thanh toan</option>
-        <option value="debt">Con thieu</option>
+        <option value="all">Tất cả</option>
+        <option value="paid">Đã thanh toán</option>
+        <option value="debt">Còn thiếu</option>
       </select>
     </label>
     <label class="field">
       <span>DAT</span>
       <select name="datFilter">
-        <option value="all">Tat ca</option>
-        <option value="reached">Da dat</option>
-        <option value="pending">Chua dat</option>
+        <option value="all">Tất cả</option>
+        <option value="reached">Đã đạt</option>
+        <option value="pending">Chưa đạt</option>
       </select>
     </label>
     <label class="field">
-      <span>Da nop tu</span>
+      <span>Loại bằng</span>
+      <select name="licenseFilter">
+        <option value="all">Tất cả</option>
+        <option value="A1">A1</option>
+        <option value="A2">A2</option>
+        <option value="B tự động">B tự động</option>
+        <option value="B số sàn">B số sàn</option>
+        <option value="C1">C1</option>
+        <option value="D">D</option>
+        <option value="E">E</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Đã nộp từ</span>
       <input type="number" min="0" name="minPaidAmount" placeholder="0" value="${filters.minPaidAmount}" />
     </label>
   `;
@@ -51,7 +64,10 @@ export function createFilterBar(filters, handlers) {
     }
 
     element.addEventListener("input", () => {
-      handlers.onChange({ [element.name]: element.value });
+      handlers.onChange({
+        [element.name]: element.value,
+        activeStatFilter: "all",
+      });
     });
   });
 

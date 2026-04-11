@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #fff7ef;
   --surface: rgba(255, 255, 255, 0.82);
   --surface-strong: #ffffff;
@@ -11,6 +11,7 @@
   --success: #14b87a;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --info: #5b7cfa;
   --shadow: 0 24px 80px rgba(27, 56, 92, 0.18);
   --radius-xl: 32px;
   --radius-lg: 24px;
@@ -31,7 +32,7 @@ body {
 button, input, select { font: inherit; }
 button { cursor: pointer; border: none; }
 #app { min-height: 100vh; }
-.login-screen, .dashboard-screen { min-height: 100vh; padding: 32px; }
+.login-screen, .dashboard-screen { min-height: 100vh; padding: 24px; }
 .login-screen { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 24px; align-items: stretch; }
 .login-hero, .login-panel, .topbar, .filter-bar, .stat-card, .student-card, .panel, .empty-state {
   backdrop-filter: blur(18px);
@@ -39,10 +40,10 @@ button { cursor: pointer; border: none; }
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
 }
-.login-hero, .login-panel { border-radius: var(--radius-xl); padding: 40px; }
+.login-hero, .login-panel { border-radius: var(--radius-xl); padding: 32px; }
 .login-hero { display: flex; flex-direction: column; justify-content: space-between; }
-.login-hero h1, .topbar h1 { margin: 8px 0 16px; font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1; }
-.hero-copy, .topbar p, .muted, .detail-summary p, .empty-state p, .stage-note { color: var(--muted); }
+.login-hero h1, .topbar h1 { margin: 8px 0 16px; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
+.hero-copy, .topbar p, .muted, .detail-summary p, .empty-state p, .stage-note, .stats-note { color: var(--muted); }
 .demo-accounts, .login-form, .student-form, .detail-summary, .dashboard-screen { display: grid; gap: 18px; }
 .demo-accounts__card, .detail-card, .toggle-card {
   background: rgba(255, 255, 255, 0.72);
@@ -50,7 +51,7 @@ button { cursor: pointer; border: none; }
   border-radius: var(--radius-md);
   padding: 18px;
 }
-.demo-accounts__card span, .topbar__account span, .field span, .detail-card span, .stat-card p, .eyebrow {
+.demo-accounts__card span, .topbar__account span, .field span, .detail-card span, .stat-card p, .eyebrow, .stat-card__hint {
   display: block;
   font-size: 0.88rem;
   color: var(--muted);
@@ -80,10 +81,21 @@ button { cursor: pointer; border: none; }
 .topbar, .toolbar, .student-card__footer, .topbar__account, .student-card__header, .student-card__body, .panel__header, .form-actions, .metric-row {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
 }
-.topbar { border-radius: var(--radius-xl); padding: 28px 32px; }
+.topbar { border-radius: var(--radius-xl); padding: 24px 28px; }
 .stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
-.stat-card { border-radius: var(--radius-lg); padding: 20px; position: relative; overflow: hidden; }
-.stat-card strong { font-size: 1.8rem; }
+.stats-note { margin: -4px 0 0; font-size: 0.95rem; }
+.stat-card {
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+.stat-card strong { font-size: clamp(1.35rem, 2vw, 1.9rem); line-height: 1.1; }
 .stat-card::after {
   content: ""; position: absolute; inset: auto -30px -30px auto; width: 96px; height: 96px; border-radius: 50%; opacity: 0.16;
 }
@@ -93,7 +105,14 @@ button { cursor: pointer; border: none; }
 .stat-card.green::after { background: var(--success); }
 .stat-card.blue::after { background: var(--secondary); }
 .stat-card.yellow::after { background: #ffd166; }
-.filter-bar { border-radius: var(--radius-lg); padding: 18px; display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 12px; }
+.stat-card.is-active {
+  border-color: rgba(24, 49, 83, 0.24);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(27, 56, 92, 0.24);
+}
+.toolbar { flex-wrap: wrap; }
+.toolbar h2, .panel h2, .student-card h3 { margin: 0; }
+.filter-bar { border-radius: var(--radius-lg); padding: 18px; display: grid; grid-template-columns: 2fr repeat(6, 1fr); gap: 12px; }
 .student-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .student-card { border-radius: var(--radius-lg); padding: 20px; display: grid; gap: 16px; }
 .student-card__status { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -101,9 +120,12 @@ button { cursor: pointer; border: none; }
 .status-tag.success { background: rgba(20, 184, 122, 0.14); color: var(--success); }
 .status-tag.warning { background: rgba(245, 158, 11, 0.14); color: var(--warning); }
 .status-tag.danger { background: rgba(239, 68, 68, 0.14); color: var(--danger); }
-.modal-shell { position: fixed; inset: 0; background: rgba(10, 22, 37, 0.5); display: grid; place-items: center; padding: 24px; }
+.status-tag.info { background: rgba(91, 124, 250, 0.14); color: var(--info); }
+.modal-shell { position: fixed; inset: 0; background: rgba(10, 22, 37, 0.5); display: grid; place-items: center; padding: 16px; }
 .panel {
   width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
   border-radius: var(--radius-xl);
   padding: 24px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.92));
@@ -116,7 +138,31 @@ button { cursor: pointer; border: none; }
   .stats-grid, .student-list, .filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
-  .login-screen, .student-list, .form-grid, .toggle-grid, .detail-grid, .filter-bar, .stats-grid { grid-template-columns: 1fr; }
-  .topbar, .toolbar, .student-card__footer, .topbar__account { flex-direction: column; align-items: flex-start; }
-  .login-screen, .dashboard-screen { padding: 20px; }
+  .login-screen,
+  .student-list,
+  .form-grid,
+  .toggle-grid,
+  .detail-grid,
+  .filter-bar,
+  .stats-grid { grid-template-columns: 1fr; }
+
+  .topbar,
+  .toolbar,
+  .student-card__footer,
+  .topbar__account,
+  .student-card__header,
+  .student-card__body,
+  .metric-row { flex-direction: column; align-items: flex-start; }
+
+  .login-screen, .dashboard-screen { padding: 16px; }
+  .login-hero, .login-panel, .topbar, .panel, .student-card, .filter-bar { padding: 20px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .stat-card {
+    aspect-ratio: 1 / 1;
+    min-height: 150px;
+    padding: 16px;
+  }
+  .stat-card strong { font-size: 1.2rem; }
+  .stat-card p, .stat-card__hint { font-size: 0.82rem; }
+  .toolbar .primary-button, .topbar .secondary-button { width: 100%; }
 }

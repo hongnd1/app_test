@@ -10,7 +10,7 @@ export const loginService = {
 
     const account = accountService.findAccount(credentials.username.trim());
     if (!account || account.password !== credentials.password.trim()) {
-      return { success: false, message: "Thong tin dang nhap khong chinh xac." };
+      return { success: false, message: "Thông tin đăng nhập không chính xác." };
     }
 
     const activeAccount = accountService.activateTrialIfNeeded(account);
@@ -19,7 +19,7 @@ export const loginService = {
     if (session.expired) {
       return {
         success: false,
-        message: "Tai khoan dung thu da het han. Vui long nang cap tai khoan.",
+        message: "Tài khoản dùng thử đã hết hạn. Vui lòng nâng cấp tài khoản.",
       };
     }
 

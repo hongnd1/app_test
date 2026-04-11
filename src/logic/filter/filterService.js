@@ -18,6 +18,9 @@ export const filterService = {
       if (filters.minPaidAmount !== "" && student.daNop < Number(filters.minPaidAmount)) {
         return false;
       }
+      if (filters.licenseFilter && filters.licenseFilter !== "all" && student.loaiBang !== filters.licenseFilter) {
+        return false;
+      }
 
       return true;
     });

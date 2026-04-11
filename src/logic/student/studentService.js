@@ -13,7 +13,14 @@ function generateStudentId(students) {
 }
 
 function normalizeStudents(students) {
-  return students.map((student) => paymentService.enrichPayment(student));
+  return students.map((student) =>
+    paymentService.enrichPayment(
+      createStudentModel({
+        ...student,
+        loaiBang: student.loaiBang ?? "B tự động",
+      }),
+    ),
+  );
 }
 
 export const studentService = {
@@ -46,7 +53,7 @@ export const studentService = {
     const currentStudent = students.find((student) => student.id === studentId);
 
     if (!currentStudent) {
-      return { success: false, message: "Khong tim thay hoc sinh can cap nhat." };
+      return { success: false, message: "Không tìm thấy học sinh cần cập nhật." };
     }
 
     const updatedStudent = createStudentModel({

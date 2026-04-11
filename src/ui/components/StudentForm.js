@@ -1,4 +1,4 @@
-function toChecked(value) {
+﻿function toChecked(value) {
   return value ? "checked" : "";
 }
 
@@ -9,48 +9,60 @@ export function createStudentForm(student, mode, handlers) {
   wrapper.innerHTML = `
     <div class="panel__header">
       <div>
-        <p class="eyebrow">${mode === "edit" ? "Cap nhat hoc sinh" : "Them hoc sinh moi"}</p>
-        <h2>${mode === "edit" ? student?.ten ?? "" : "Thong tin hoc vien"}</h2>
+        <p class="eyebrow">${mode === "edit" ? "Cập nhật học sinh" : "Thêm học sinh mới"}</p>
+        <h2>${mode === "edit" ? student?.ten ?? "" : "Thông tin học viên"}</h2>
       </div>
-      <button class="icon-button" type="button" aria-label="Dong">×</button>
+      <button class="icon-button" type="button" aria-label="Đóng">×</button>
     </div>
     <form class="student-form">
       <div class="form-grid">
         <label class="field">
-          <span>Ten hoc sinh</span>
+          <span>Tên học sinh</span>
           <input type="text" name="ten" value="${student?.ten ?? ""}" required />
         </label>
         <label class="field">
-          <span>So CCCD</span>
+          <span>Số CCCD</span>
           <input type="text" name="cccd" maxlength="12" value="${student?.cccd ?? ""}" required />
         </label>
         <label class="field">
-          <span>Tong hoc phi</span>
+          <span>Loại bằng</span>
+          <select name="loaiBang" required>
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B tự động">B tự động</option>
+            <option value="B số sàn">B số sàn</option>
+            <option value="C1">C1</option>
+            <option value="D">D</option>
+            <option value="E">E</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Tổng học phí</span>
           <input type="number" min="0" name="tongHocPhi" value="${student?.tongHocPhi ?? 0}" required />
         </label>
         <label class="field">
-          <span>So tien da nop</span>
+          <span>Số tiền đã nộp</span>
           <input type="number" min="0" name="daNop" value="${student?.daNop ?? 0}" required />
         </label>
         <label class="field">
-          <span>So km DAT</span>
+          <span>Số km DAT</span>
           <input type="number" min="0" name="soKmDAT" value="${student?.soKmDAT ?? 0}" required />
         </label>
       </div>
       <div class="toggle-grid">
         <label class="toggle-card">
           <input type="checkbox" name="daHocLyThuyet" ${toChecked(student?.daHocLyThuyet)} />
-          <span>Da hoc xong ly thuyet</span>
+          <span>Đã học xong lý thuyết</span>
         </label>
         <label class="toggle-card">
           <input type="checkbox" name="daHocSaHinh" ${toChecked(student?.daHocSaHinh)} />
-          <span>Da hoc sa hinh</span>
+          <span>Đã học sa hình</span>
         </label>
       </div>
       <p class="form-message" hidden></p>
       <div class="form-actions">
-        <button type="button" class="secondary-button">Huy</button>
-        <button type="submit" class="primary-button">${mode === "edit" ? "Luu thay doi" : "Them hoc sinh"}</button>
+        <button type="button" class="secondary-button">Hủy</button>
+        <button type="submit" class="primary-button">${mode === "edit" ? "Lưu thay đổi" : "Thêm học sinh"}</button>
       </div>
     </form>
   `;
@@ -59,6 +71,9 @@ export function createStudentForm(student, mode, handlers) {
   const cancelButton = wrapper.querySelector(".secondary-button");
   const form = wrapper.querySelector("form");
   const messageElement = wrapper.querySelector(".form-message");
+  const licenseSelect = wrapper.querySelector('[name="loaiBang"]');
+
+  licenseSelect.value = student?.loaiBang ?? "B tự động";
 
   closeButton.addEventListener("click", handlers.onClose);
   cancelButton.addEventListener("click", handlers.onClose);
@@ -70,6 +85,7 @@ export function createStudentForm(student, mode, handlers) {
     const payload = {
       ten: formData.get("ten"),
       cccd: formData.get("cccd"),
+      loaiBang: formData.get("loaiBang"),
       tongHocPhi: Number(formData.get("tongHocPhi")),
       daNop: Number(formData.get("daNop")),
       soKmDAT: Number(formData.get("soKmDAT")),

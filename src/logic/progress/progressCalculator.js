@@ -3,26 +3,26 @@ const DAT_TARGET_KM = 810;
 export const progressCalculator = {
   getDatStatus(student) {
     if (student.soKmDAT >= DAT_TARGET_KM) {
-      return { label: "DAT da dat", tone: "success" };
+      return { label: "DAT đã đạt", tone: "success" };
     }
 
     if (student.soKmDAT > 0) {
-      return { label: `Con thieu ${DAT_TARGET_KM - student.soKmDAT} km`, tone: "warning" };
+      return { label: `Còn thiếu ${DAT_TARGET_KM - student.soKmDAT} km`, tone: "warning" };
     }
 
-    return { label: "Chua chay DAT", tone: "danger" };
+    return { label: "Chưa chạy DAT", tone: "danger" };
   },
 
   getStageSummary(student) {
     if (student.daHocLyThuyet && student.daHocSaHinh && student.soKmDAT >= DAT_TARGET_KM) {
-      return "Hoan tat dao tao";
+      return "Hoàn tất đào tạo";
     }
 
     if (student.daHocLyThuyet && (student.daHocSaHinh || student.soKmDAT > 0)) {
-      return "Dang trong giai doan thuc hanh";
+      return "Đang trong giai đoạn thực hành";
     }
 
-    return "Can hoan thanh ly thuyet";
+    return "Cần hoàn thành lý thuyết";
   },
 
   getTargetKm() {

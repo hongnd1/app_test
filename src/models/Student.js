@@ -6,6 +6,7 @@ export function createStudentModel(data) {
     id: data.id,
     ten: data.ten.trim(),
     cccd: data.cccd.trim(),
+    loaiBang: data.loaiBang?.trim() || "B tự động",
     tongHocPhi,
     daNop,
     conThieu: Math.max(tongHocPhi - daNop, 0),

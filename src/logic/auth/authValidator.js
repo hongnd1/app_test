@@ -6,7 +6,7 @@ export const authValidator = {
     if (!username || !password) {
       return {
         valid: false,
-        message: "Vui long nhap day du ten dang nhap va mat khau.",
+        message: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.",
       };
     }
 

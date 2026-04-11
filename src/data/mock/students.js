@@ -1,8 +1,9 @@
 export const mockStudents = [
   {
     id: "HS001",
-    ten: "Nguyen Van An",
+    ten: "Nguyễn Văn An",
     cccd: "012345678901",
+    loaiBang: "B tự động",
     tongHocPhi: 10000000,
     daNop: 6000000,
     daHocLyThuyet: true,
@@ -11,8 +12,9 @@ export const mockStudents = [
   },
   {
     id: "HS002",
-    ten: "Tran Minh Chau",
+    ten: "Trần Minh Châu",
     cccd: "012345678902",
+    loaiBang: "C1",
     tongHocPhi: 12000000,
     daNop: 12000000,
     daHocLyThuyet: true,
@@ -21,8 +23,9 @@ export const mockStudents = [
   },
   {
     id: "HS003",
-    ten: "Le Hoang Gia",
+    ten: "Lê Hoàng Gia",
     cccd: "012345678903",
+    loaiBang: "A2",
     tongHocPhi: 9500000,
     daNop: 4500000,
     daHocLyThuyet: false,
@@ -31,8 +34,9 @@ export const mockStudents = [
   },
   {
     id: "HS004",
-    ten: "Pham Thanh Ha",
+    ten: "Phạm Thanh Hà",
     cccd: "012345678904",
+    loaiBang: "D",
     tongHocPhi: 11000000,
     daNop: 8000000,
     daHocLyThuyet: true,

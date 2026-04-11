@@ -5,13 +5,13 @@ export const paymentCalculator = {
 
   getPaymentStatus(student) {
     if (student.conThieu <= 0) {
-      return { label: "Da thanh toan", tone: "success" };
+      return { label: "Đã thanh toán", tone: "success" };
     }
 
     if (student.daNop > 0) {
-      return { label: "Con thieu hoc phi", tone: "warning" };
+      return { label: "Còn thiếu học phí", tone: "warning" };
     }
 
-    return { label: "Chua dong hoc phi", tone: "danger" };
+    return { label: "Chưa đóng học phí", tone: "danger" };
   },
 };
