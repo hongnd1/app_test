@@ -22,6 +22,25 @@ function monthLabel(month, year) {
   return `${names[month]} ${year}`;
 }
 
+function weekdayLabel(dateString) {
+  const names = [
+    "Chủ nhật",
+    "Thứ hai",
+    "Thứ ba",
+    "Thứ tư",
+    "Thứ năm",
+    "Thứ sáu",
+    "Thứ bảy",
+  ];
+  const date = new Date(`${dateString}T00:00:00`);
+  return names[date.getDay()];
+}
+
+function fullDateLabel(dateString) {
+  const date = new Date(`${dateString}T00:00:00`);
+  return `${weekdayLabel(dateString)}, ngày ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+}
+
 function createBottomTabButton(label, key, activeKey, onClick) {
   const button = document.createElement("button");
   button.type = "button";
@@ -67,10 +86,17 @@ function createScheduleCard(schedule, actions) {
   return card;
 }
 
-function renderScheduleList(title, schedules, actions) {
+function renderScheduleList(title, schedules, actions, subtitle = "") {
   const section = document.createElement("section");
   section.className = "schedule-block";
-  section.innerHTML = `<div class="section-heading"><h2>${title}</h2></div>`;
+  section.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <h2>${title}</h2>
+        ${subtitle ? `<p class="muted section-heading__meta">${subtitle}</p>` : ""}
+      </div>
+    </div>
+  `;
 
   const list = document.createElement("div");
   list.className = "schedule-list";
@@ -260,8 +286,18 @@ function renderScheduleTab(container, props) {
   const overview = document.createElement("div");
   overview.className = "schedule-overview-grid";
   overview.append(
-    renderScheduleList("Hôm nay", props.scheduleBuckets.today, { onDelete: props.onDeleteSchedule }),
-    renderScheduleList("Ngày mai", props.scheduleBuckets.tomorrow, { onDelete: props.onDeleteSchedule }),
+    renderScheduleList(
+      "Hôm nay",
+      props.scheduleBuckets.today,
+      { onDelete: props.onDeleteSchedule },
+      fullDateLabel(props.scheduleBuckets.todayDate),
+    ),
+    renderScheduleList(
+      "Ngày mai",
+      props.scheduleBuckets.tomorrow,
+      { onDelete: props.onDeleteSchedule },
+      fullDateLabel(props.scheduleBuckets.tomorrowDate),
+    ),
   );
   section.appendChild(overview);
 
@@ -299,21 +335,29 @@ function renderStudentsTab(container, props) {
   section.className = "tab-panel active";
   section.innerHTML = `
     <div class="toolbar compact-toolbar sticky-toolbar">
-      <div>
+      <div class="toolbar__content">
         <p class="eyebrow">Danh sách học viên</p>
         <h2>${props.activeFilterLabel}</h2>
         <p>${props.students.length} / ${props.totalStudents} học sinh đang hiển thị</p>
       </div>
-      <button class="primary-button" type="button">Thêm học sinh</button>
+      <div class="toolbar-actions">
+        <button class="secondary-button" type="button" data-action="toggle-filter">
+          ${props.filters.showStudentFilters ? "Ẩn tìm kiếm" : "Tìm kiếm học viên"}
+        </button>
+        <button class="primary-button" type="button" data-action="create-student">Thêm học sinh</button>
+      </div>
     </div>
   `;
-  section.querySelector(".primary-button").addEventListener("click", props.onOpenCreateForm);
+  section.querySelector('[data-action="create-student"]').addEventListener("click", props.onOpenCreateForm);
+  section.querySelector('[data-action="toggle-filter"]').addEventListener("click", props.onToggleStudentFilters);
 
-  section.appendChild(
-    createFilterBar(props.filters, {
-      onChange: props.onFilterChange,
-    }),
-  );
+  if (props.filters.showStudentFilters) {
+    section.appendChild(
+      createFilterBar(props.filters, {
+        onChange: props.onFilterChange,
+      }),
+    );
+  }
 
   const list = document.createElement("section");
   list.className = "student-list student-list--search";
@@ -397,7 +441,7 @@ export function DashboardScreen(root, props) {
       <div>
         <p class="eyebrow">BLX Student Manager</p>
         <h1>Quản lý đào tạo</h1>
-        <span class="topbar__meta">${props.session.displayName} · ${remainingInfo}</span>
+        <span class="topbar__meta">Người dùng: ${props.session.displayName} (${props.session.username}) · ${remainingInfo}</span>
       </div>
       <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
     </header>

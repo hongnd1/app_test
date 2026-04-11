@@ -11,12 +11,12 @@
       </p>
       <div class="demo-accounts">
         <div class="demo-accounts__card">
-          <strong>Tài khoản dùng thử</strong>
-          <span>trial / 123456</span>
+          <strong>Tài khoản đăng nhập</strong>
+          <span>Được cấu hình trong file riêng của hệ thống.</span>
         </div>
         <div class="demo-accounts__card">
-          <strong>Tài khoản vĩnh viễn</strong>
-          <span>admin / admin123</span>
+          <strong>Quản lý sử dụng</strong>
+          <span>Đăng nhập bằng tài khoản đã được cấp trước.</span>
         </div>
       </div>
     </section>

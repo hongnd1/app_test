@@ -30,6 +30,7 @@ const state = {
     licenseFilter: "all",
     minPaidAmount: "",
     activeStatFilter: "all",
+    showStudentFilters: false,
     editingStudentId: null,
     detailStudentId: null,
     formMode: null,
@@ -73,11 +74,11 @@ function refocusSearchIfNeeded() {
 }
 
 function openCreateForm() {
-  updateUi({ editingStudentId: null, formMode: "create", activeTab: "students" });
+  updateUi({ editingStudentId: null, formMode: "create", activeTab: "students", showStudentFilters: false });
 }
 
 function openEditForm(studentId) {
-  updateUi({ editingStudentId: studentId, formMode: "edit", activeTab: "students" });
+  updateUi({ editingStudentId: studentId, formMode: "edit", activeTab: "students", showStudentFilters: false });
 }
 
 function closeForm() {
@@ -234,6 +235,7 @@ function handleOpenStudentTab() {
   updateUi({
     activeTab: "students",
     activeStatFilter: "all",
+    showStudentFilters: false,
     theoryFilter: "all",
     saHinhFilter: "all",
     paymentFilter: "all",
@@ -334,6 +336,7 @@ function render() {
     onOpenDetail: openDetail,
     onCloseDetail: closeDetail,
     onStatFilter: handleStatFilter,
+    onToggleStudentFilters: () => updateUi({ showStudentFilters: !state.ui.showStudentFilters }),
     onOpenStudentTab: handleOpenStudentTab,
     onOpenScheduleForm: openScheduleForm,
     onOpenScheduleDayForm: openScheduleDayForm,

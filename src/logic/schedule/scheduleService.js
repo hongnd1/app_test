@@ -85,6 +85,8 @@ export const scheduleService = {
     const tomorrow = todayString(1);
 
     return {
+      todayDate: today,
+      tomorrowDate: tomorrow,
       today: schedules.filter((item) => item.date === today),
       tomorrow: schedules.filter((item) => item.date === tomorrow),
       all: schedules,

@@ -44,6 +44,7 @@ Tab này dùng để quản lý lịch chạy DAT của học viên.
 ### 4.1. Vùng hiển thị nhanh
 - **Phần 1**: Lịch học hôm nay
 - **Phần 2**: Lịch học ngày mai
+- Hai vùng này phải hiển thị rõ **thứ** và **ngày cụ thể**
 
 ### 4.2. Lịch tổng hợp theo tháng
 - Phần **Tất cả** cần hiển thị dạng **lịch tháng** giống giao diện lịch trên điện thoại
@@ -68,6 +69,9 @@ Tab này có các chức năng:
 - Đặt lịch DAT nếu học viên đã hoàn thành lý thuyết
 
 ### 5.1. Yêu cầu phần tìm kiếm
+- Bình thường phần filter **không hiển thị**
+- Có nút **Tìm kiếm học viên** nằm cạnh nút **Thêm học sinh**
+- Khi bấm vào nút này thì mới mở toàn bộ vùng filter
 - Không được mất focus khi đang gõ trên điện thoại hoặc trình duyệt
 - Bình thường khi chưa mở chi tiết, danh sách chỉ hiển thị ngắn gọn:
   - **Tên học viên**
@@ -124,7 +128,7 @@ Mỗi lịch học DAT cần có:
 
 ## 9. Luồng sử dụng cơ bản
 1. Người dùng mở ứng dụng
-2. Đăng nhập bằng tài khoản hợp lệ
+2. Đăng nhập bằng tài khoản hợp lệ đã được cấu hình trong file riêng
 3. Xem tab Tiến độ để nắm tổng quan học viên
 4. Bấm vào một thanh tiến độ để chuyển sang tab Học viên đã lọc
 5. Tìm kiếm học viên nhanh theo tên hoặc CCCD
@@ -138,3 +142,4 @@ Mỗi lịch học DAT cần có:
 - Sau mỗi lần sửa, tài liệu mô tả phải được cập nhật đồng thời.
 - Sau mỗi lần sửa, cần commit và push ngay để có thể kiểm tra trên điện thoại.
 - Nếu có lỗi mất focus khi tìm kiếm hoặc lỗi giao diện trắng, cần ưu tiên kiểm tra luồng render của tab và component tìm kiếm.
+- Màn hình đăng nhập không hiển thị sẵn tên tài khoản và mật khẩu mẫu.

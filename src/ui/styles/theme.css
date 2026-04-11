@@ -85,13 +85,14 @@ button { cursor: pointer; border: none; }
 }
 .topbar__meta { font-size: 0.9rem; }
 .tab-content, .tab-panel, .schedule-list, .progress-grid, .schedule-overview-grid { display: grid; gap: 14px; }
-.section-heading, .toolbar > div {
+.section-heading, .toolbar__content {
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid rgba(24, 49, 83, 0.08);
   border-radius: var(--radius-md);
   padding: 14px 16px;
 }
 .section-heading h2, .toolbar h2, .panel h2, .student-card h3, .schedule-card h3 { margin: 0; }
+.section-heading__meta { margin: 6px 0 0; }
 .progress-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .progress-row {
   border-radius: var(--radius-md);
@@ -166,6 +167,21 @@ button { cursor: pointer; border: none; }
   background: var(--primary);
 }
 .filter-bar { border-radius: var(--radius-lg); padding: 16px; display: grid; grid-template-columns: 2fr repeat(6, 1fr); gap: 10px; }
+.toolbar {
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  overflow: hidden;
+}
+.toolbar__content {
+  flex: 1;
+}
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .student-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .student-list--search { grid-template-columns: 1fr; }
 .student-card { border-radius: var(--radius-lg); padding: 18px; display: grid; gap: 14px; }
@@ -246,4 +262,14 @@ button { cursor: pointer; border: none; }
   .toolbar,
   .calendar-header,
   .section-heading { flex-direction: column; align-items: flex-start; }
+
+  .toolbar-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .toolbar-actions .primary-button,
+  .toolbar-actions .secondary-button {
+    width: 100%;
+  }
 }

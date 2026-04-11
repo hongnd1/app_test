@@ -1,4 +1,4 @@
-import { mockAccounts } from "../../data/mock/accounts.js";
+import { configuredAccounts } from "../../data/config/accounts.js";
 import { createAccountModel } from "../../models/Account.js";
 
 const SESSION_KEY = "blx_session";
@@ -51,7 +51,7 @@ function getTrialStatus(account) {
 
 export const accountService = {
   findAccount(username) {
-    const account = mockAccounts.find((item) => item.username === username);
+    const account = configuredAccounts.find((item) => item.username === username);
     return account ? hydrateAccount(account) : null;
   },
 
