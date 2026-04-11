@@ -11,6 +11,7 @@ Mục tiêu của ứng dụng là giúp người quản lý dễ dàng:
 - Quản lý tài khoản đăng nhập theo thời hạn sử dụng
 - Theo dõi học viên theo hạng bằng
 - Đặt và theo dõi lịch học DAT
+- Hiển thị lời chào phù hợp với lớp học của Thầy Tuấn Anh
 
 ---
 
@@ -143,3 +144,5 @@ Mỗi lịch học DAT cần có:
 - Sau mỗi lần sửa, cần commit và push ngay để có thể kiểm tra trên điện thoại.
 - Nếu có lỗi mất focus khi tìm kiếm hoặc lỗi giao diện trắng, cần ưu tiên kiểm tra luồng render của tab và component tìm kiếm.
 - Màn hình đăng nhập không hiển thị sẵn tên tài khoản và mật khẩu mẫu.
+- Màn hình chào hiển thị nội dung giới thiệu lớp học của Thầy Tuấn Anh.
+- Topbar hiển thị dạng `Xin chào ...` và có dòng bản quyền thiết kế bởi Nguyễn Đình Hồng.

@@ -440,8 +440,9 @@ export function DashboardScreen(root, props) {
     <header class="topbar compact-topbar">
       <div>
         <p class="eyebrow">BLX Student Manager</p>
+        <p class="topbar__copyright">Bản quyền được thiết kế bởi Nguyễn Đình Hồng</p>
         <h1>Quản lý đào tạo</h1>
-        <span class="topbar__meta">Người dùng: ${props.session.displayName} (${props.session.username}) · ${remainingInfo}</span>
+        <span class="topbar__meta">Xin chào ${props.session.displayName} · ${remainingInfo}</span>
       </div>
       <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
     </header>

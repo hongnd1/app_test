@@ -1,15 +1,15 @@
-export const configuredAccounts = [
+﻿export const configuredAccounts = [
   {
     username: "trial",
     password: "123456",
-    displayName: "Tài khoản dùng thử",
+    displayName: "Dinh Tuan Anh",
     accountType: "trial",
     trialDays: 7,
   },
   {
     username: "admin",
     password: "admin123",
-    displayName: "Quản trị viên BLX",
+    displayName: "Nguyễn Đình Hồng",
     accountType: "permanent",
     trialDays: null,
   },

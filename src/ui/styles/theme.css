@@ -42,14 +42,14 @@ button { cursor: pointer; border: none; }
 .login-hero { display: flex; flex-direction: column; justify-content: space-between; }
 .login-hero h1, .topbar h1 { margin: 8px 0 10px; font-size: clamp(1.6rem, 4vw, 3rem); line-height: 1; }
 .hero-copy, .muted, .detail-summary p, .empty-state p, .stage-note, .topbar__meta, .progress-row p, .schedule-note { color: var(--muted); }
-.demo-accounts, .login-form, .student-form, .detail-summary, .dashboard-screen { display: grid; gap: 14px; }
-.demo-accounts__card, .detail-card, .toggle-card {
+.login-form, .student-form, .detail-summary, .dashboard-screen { display: grid; gap: 14px; }
+.detail-card, .toggle-card {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(24, 49, 83, 0.08);
   border-radius: var(--radius-md);
   padding: 18px;
 }
-.demo-accounts__card span, .field span, .detail-card span, .eyebrow { display: block; font-size: 0.84rem; color: var(--muted); }
+.field span, .detail-card span, .eyebrow { display: block; font-size: 0.84rem; color: var(--muted); }
 .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; }
 .login-panel { display: flex; align-items: center; justify-content: center; }
 .field { display: grid; gap: 8px; }
@@ -84,6 +84,7 @@ button { cursor: pointer; border: none; }
   padding: 16px 18px;
 }
 .topbar__meta { font-size: 0.9rem; }
+.topbar__copyright { margin: 0; font-size: 0.82rem; color: var(--muted); }
 .tab-content, .tab-panel, .schedule-list, .progress-grid, .schedule-overview-grid { display: grid; gap: 14px; }
 .section-heading, .toolbar__content {
   background: rgba(255, 255, 255, 0.74);

@@ -7,18 +7,8 @@
       <p class="eyebrow">BLX Student Manager</p>
       <h1>Quản lý học sinh, học phí và tiến độ đào tạo trên một màn hình.</h1>
       <p class="hero-copy">
-        Giao diện trẻ trung, lọc nhanh học viên, theo dõi DAT, lý thuyết và sa hình theo đúng mô tả trong tài liệu.
+        Chào mừng tới lớp học của Thầy Tuấn Anh, chuyên hỗ trợ thi cấp đổi giấy phép A1 A2 B C1 D E.
       </p>
-      <div class="demo-accounts">
-        <div class="demo-accounts__card">
-          <strong>Tài khoản đăng nhập</strong>
-          <span>Được cấu hình trong file riêng của hệ thống.</span>
-        </div>
-        <div class="demo-accounts__card">
-          <strong>Quản lý sử dụng</strong>
-          <span>Đăng nhập bằng tài khoản đã được cấp trước.</span>
-        </div>
-      </div>
     </section>
     <section class="login-panel">
       <form class="login-form">
