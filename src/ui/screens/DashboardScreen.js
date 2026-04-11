@@ -88,14 +88,24 @@ function renderScheduleList(title, schedules, actions) {
   return section;
 }
 
-function createScheduleForm(student, selectedDate, handlers) {
+function createScheduleForm(student, students, selectedDate, handlers) {
+  const studentOptions = students
+    .map(
+      (item) => `
+        <option value="${item.id}" ${item.id === student?.id ? "selected" : ""}>
+          ${item.ten} · ${item.loaiBang}
+        </option>
+      `,
+    )
+    .join("");
+
   const wrapper = document.createElement("section");
   wrapper.className = "panel schedule-form-panel";
   wrapper.innerHTML = `
     <div class="panel__header">
       <div>
         <p class="eyebrow">Đặt lịch DAT</p>
-        <h2>${student?.ten ?? "Chọn học viên"}</h2>
+        <h2>${student?.ten ?? "Chọn học viên cho ngày đã chọn"}</h2>
       </div>
       <button class="icon-button" type="button" aria-label="Đóng">×</button>
     </div>
@@ -103,7 +113,10 @@ function createScheduleForm(student, selectedDate, handlers) {
       <div class="form-grid">
         <label class="field">
           <span>Học viên</span>
-          <input type="text" value="${student ? `${student.ten} · ${student.loaiBang}` : ""}" disabled />
+          <select name="studentId" required>
+            <option value="">Chọn học viên đã hoàn thành lý thuyết</option>
+            ${studentOptions}
+          </select>
         </label>
         <label class="field">
           <span>Ngày học DAT</span>
@@ -135,7 +148,7 @@ function createScheduleForm(student, selectedDate, handlers) {
     event.preventDefault();
     const formData = new FormData(form);
     const result = handlers.onSave({
-      studentId: student?.id,
+      studentId: formData.get("studentId"),
       date: formData.get("date"),
       time: formData.get("time"),
       note: formData.get("note"),
@@ -253,13 +266,24 @@ function renderScheduleTab(container, props) {
   section.appendChild(overview);
 
   section.appendChild(createCalendar(props));
-  section.appendChild(renderScheduleList(`Lịch ngày ${props.filters.selectedScheduleDate}`, props.scheduleBuckets.selectedDay, { onDelete: props.onDeleteSchedule }));
+  const selectedSection = renderScheduleList(
+    `Lịch ngày ${props.filters.selectedScheduleDate}`,
+    props.scheduleBuckets.selectedDay,
+    { onDelete: props.onDeleteSchedule },
+  );
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "primary-button compact-button schedule-add-button";
+  addButton.textContent = "Thêm lịch học";
+  addButton.addEventListener("click", () => props.onOpenScheduleDayForm(props.filters.selectedScheduleDate));
+  selectedSection.querySelector(".section-heading").appendChild(addButton);
+  section.appendChild(selectedSection);
 
-  if (props.scheduleStudent) {
+  if (props.filters.scheduleFormOpen) {
     const modal = document.createElement("div");
     modal.className = "modal-shell";
     modal.appendChild(
-      createScheduleForm(props.scheduleStudent, props.filters.selectedScheduleDate, {
+      createScheduleForm(props.scheduleStudent, props.scheduleCandidates, props.filters.selectedScheduleDate, {
         onClose: props.onCloseScheduleForm,
         onSave: props.onSaveSchedule,
       }),
@@ -292,7 +316,7 @@ function renderStudentsTab(container, props) {
   );
 
   const list = document.createElement("section");
-  list.className = `student-list ${props.filters.searchTerm ? "student-list--search" : ""}`;
+  list.className = "student-list student-list--search";
 
   if (!props.students.length) {
     const empty = document.createElement("div");
@@ -313,7 +337,7 @@ function renderStudentsTab(container, props) {
             onDelete: props.onDeleteStudent,
             onSchedule: (studentId) => props.onOpenScheduleForm(studentId, props.filters.selectedScheduleDate),
           },
-          { compact: Boolean(props.filters.searchTerm) },
+          { compact: true },
         ),
       );
     });
@@ -339,9 +363,17 @@ function renderStudentsTab(container, props) {
     modal.appendChild(
       createStudentDetail(props.detailStudent, {
         onClose: props.onCloseDetail,
+        onDelete: (studentId) => {
+          props.onCloseDetail();
+          props.onDeleteStudent(studentId);
+        },
         onEdit: (studentId) => {
           props.onCloseDetail();
           props.onOpenEditForm(studentId);
+        },
+        onSchedule: (studentId) => {
+          props.onCloseDetail();
+          props.onOpenScheduleForm(studentId, props.filters.selectedScheduleDate);
         },
       }),
     );

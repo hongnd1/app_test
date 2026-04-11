@@ -33,6 +33,7 @@ const state = {
     editingStudentId: null,
     detailStudentId: null,
     formMode: null,
+    scheduleFormOpen: false,
     scheduleStudentId: null,
   },
 };
@@ -80,7 +81,7 @@ function openEditForm(studentId) {
 }
 
 function closeForm() {
-  updateUi({ editingStudentId: null, formMode: null, scheduleStudentId: null });
+  updateUi({ editingStudentId: null, formMode: null, scheduleStudentId: null, scheduleFormOpen: false });
 }
 
 function openDetail(studentId) {
@@ -92,11 +93,25 @@ function closeDetail() {
 }
 
 function openScheduleForm(studentId, date = state.ui.selectedScheduleDate) {
-  updateUi({ scheduleStudentId: studentId, selectedScheduleDate: date, activeTab: "schedule" });
+  updateUi({
+    scheduleStudentId: studentId,
+    selectedScheduleDate: date,
+    scheduleFormOpen: true,
+    activeTab: "schedule",
+  });
+}
+
+function openScheduleDayForm(date = state.ui.selectedScheduleDate) {
+  updateUi({
+    scheduleStudentId: null,
+    selectedScheduleDate: date,
+    scheduleFormOpen: true,
+    activeTab: "schedule",
+  });
 }
 
 function closeScheduleForm() {
-  updateUi({ scheduleStudentId: null });
+  updateUi({ scheduleStudentId: null, scheduleFormOpen: false });
 }
 
 function handleLogin(credentials) {
@@ -149,6 +164,10 @@ function handleDeleteStudent(studentId) {
     editingStudentId: state.ui.editingStudentId === studentId ? null : state.ui.editingStudentId,
     detailStudentId: state.ui.detailStudentId === studentId ? null : state.ui.detailStudentId,
     scheduleStudentId: state.ui.scheduleStudentId === studentId ? null : state.ui.scheduleStudentId,
+    scheduleFormOpen:
+      state.ui.scheduleStudentId === studentId && state.ui.scheduleFormOpen
+        ? false
+        : state.ui.scheduleFormOpen,
     formMode:
       state.ui.editingStudentId === studentId && state.ui.formMode === "edit"
         ? null
@@ -232,6 +251,7 @@ function handleSaveSchedule(payload) {
     syncSchedules();
     updateUi({
       scheduleStudentId: null,
+      scheduleFormOpen: false,
       scheduleListTab: "all",
       selectedScheduleDate: payload.date,
       activeTab: "schedule",
@@ -277,6 +297,7 @@ function render() {
   const scheduleStudent = state.ui.scheduleStudentId
     ? studentService.getStudentById(state.ui.scheduleStudentId)
     : null;
+  const scheduleCandidates = state.students.filter((student) => student.daHocLyThuyet);
   const statistics = progressService.getDashboardStatistics(state.students);
   const progressOverview = progressService.getProgressOverview(state.students);
   const scheduleBuckets = scheduleService.getScheduleBuckets({
@@ -298,6 +319,7 @@ function render() {
     editingStudent,
     detailStudent,
     scheduleStudent,
+    scheduleCandidates,
     onLogout: handleLogout,
     onChangeTab: (activeTab) => updateUi({ activeTab }),
     onChangeScheduleListTab: (scheduleListTab) => updateUi({ scheduleListTab }),
@@ -314,6 +336,7 @@ function render() {
     onStatFilter: handleStatFilter,
     onOpenStudentTab: handleOpenStudentTab,
     onOpenScheduleForm: openScheduleForm,
+    onOpenScheduleDayForm: openScheduleDayForm,
     onCloseScheduleForm: closeScheduleForm,
     onSaveSchedule: handleSaveSchedule,
     onDeleteSchedule: handleDeleteSchedule,

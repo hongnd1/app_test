@@ -61,13 +61,21 @@ export function createStudentDetail(student, handlers) {
     </div>
     <div class="form-actions">
       <button type="button" class="secondary-button">Đóng</button>
-      <button type="button" class="primary-button">Sửa thông tin</button>
+      <button type="button" class="secondary-button detail-edit-button">Sửa thông tin</button>
+      <button type="button" class="ghost-danger-button detail-delete-button">Xóa</button>
+      ${student.daHocLyThuyet ? '<button type="button" class="primary-button detail-schedule-button">Đặt lịch DAT</button>' : ""}
     </div>
   `;
 
   wrapper.querySelector(".icon-button").addEventListener("click", handlers.onClose);
   wrapper.querySelector(".secondary-button").addEventListener("click", handlers.onClose);
-  wrapper.querySelector(".primary-button").addEventListener("click", () => handlers.onEdit(student.id));
+  wrapper.querySelector(".detail-edit-button").addEventListener("click", () => handlers.onEdit(student.id));
+  wrapper.querySelector(".detail-delete-button").addEventListener("click", () => handlers.onDelete(student.id));
+
+  const scheduleButton = wrapper.querySelector(".detail-schedule-button");
+  if (scheduleButton) {
+    scheduleButton.addEventListener("click", () => handlers.onSchedule(student.id));
+  }
 
   return wrapper;
 }

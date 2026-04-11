@@ -53,6 +53,9 @@ Tab này dùng để quản lý lịch chạy DAT của học viên.
 ### 4.3. Chức năng đặt lịch DAT
 - Chỉ cho phép đặt lịch DAT cho học viên đã hoàn thành lý thuyết
 - Có thể thêm học viên vào ngày đang được chọn trên lịch
+- Khi bấm vào ngày nào cũng phải có nút **Thêm lịch học**
+- Nếu trùng giờ trong cùng ngày thì phải cảnh báo
+- Giờ học chỉ được phép trong khoảng **06:00 - 21:00**
 
 ---
 
@@ -66,10 +69,13 @@ Tab này có các chức năng:
 
 ### 5.1. Yêu cầu phần tìm kiếm
 - Không được mất focus khi đang gõ trên điện thoại hoặc trình duyệt
-- Khi hiển thị kết quả tìm kiếm, danh sách chỉ hiển thị ngắn gọn:
+- Bình thường khi chưa mở chi tiết, danh sách chỉ hiển thị ngắn gọn:
   - **Tên học viên**
   - **Hạng bằng**
-- Sau khi bấm vào học viên thì mới hiển thị chi tiết và các chức năng khác
+- Sau khi bấm vào học viên thì mới hiển thị chi tiết và các chức năng:
+  - **Đặt lịch DAT**
+  - **Xóa**
+  - **Sửa thông tin**
 
 ---
 
@@ -112,6 +118,7 @@ Mỗi lịch học DAT cần có:
 - Các vùng lịch và danh sách phải gọn, không hiển thị thừa thông tin
 - Kết quả tìm kiếm phải tối giản để người dùng chọn nhanh
 - Các thao tác chuyển tab, lọc và đặt lịch phải thực hiện được trên một màn hình nhỏ mà không gây rối
+- Các vùng tiêu đề chính phải bo tròn đồng bộ với các khối nội dung khác
 
 ---
 

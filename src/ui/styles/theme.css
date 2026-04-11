@@ -73,7 +73,7 @@ button { cursor: pointer; border: none; }
 .icon-button, .icon-logout-button {
   width: 44px; height: 44px; padding: 0; background: rgba(24, 49, 83, 0.08); color: var(--text); font-size: 1.2rem; line-height: 1;
 }
-.compact-topbar, .student-card__footer, .student-card__header, .student-card__body, .panel__header, .form-actions, .metric-row, .progress-row__header, .schedule-card__header, .toolbar, .calendar-header {
+.compact-topbar, .student-card__footer, .student-card__header, .student-card__body, .panel__header, .form-actions, .metric-row, .progress-row__header, .schedule-card__header, .toolbar, .calendar-header, .section-heading {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
 }
 .bottom-nav-layout {
@@ -85,6 +85,12 @@ button { cursor: pointer; border: none; }
 }
 .topbar__meta { font-size: 0.9rem; }
 .tab-content, .tab-panel, .schedule-list, .progress-grid, .schedule-overview-grid { display: grid; gap: 14px; }
+.section-heading, .toolbar > div {
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(24, 49, 83, 0.08);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
 .section-heading h2, .toolbar h2, .panel h2, .student-card h3, .schedule-card h3 { margin: 0; }
 .progress-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .progress-row {
@@ -112,6 +118,7 @@ button { cursor: pointer; border: none; }
 .schedule-block { border-radius: var(--radius-lg); padding: 16px; }
 .schedule-card { border-radius: var(--radius-md); padding: 14px; }
 .schedule-list { grid-template-columns: 1fr; }
+.schedule-add-button { margin-left: auto; }
 .calendar-panel {
   border-radius: var(--radius-lg);
   padding: 18px;
@@ -162,7 +169,7 @@ button { cursor: pointer; border: none; }
 .student-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .student-list--search { grid-template-columns: 1fr; }
 .student-card { border-radius: var(--radius-lg); padding: 18px; display: grid; gap: 14px; }
-.student-card--compact { padding: 0; }
+.student-card--compact { padding: 0; overflow: hidden; }
 .student-compact-item {
   width: 100%;
   display: flex;
@@ -172,6 +179,7 @@ button { cursor: pointer; border: none; }
   padding: 16px;
   text-align: left;
 }
+.student-compact-item h3 { margin-bottom: 6px; }
 .student-compact-arrow {
   font-size: 1.6rem;
   color: var(--muted);
@@ -236,5 +244,6 @@ button { cursor: pointer; border: none; }
   .progress-row__header,
   .schedule-card__header,
   .toolbar,
-  .calendar-header { flex-direction: column; align-items: flex-start; }
+  .calendar-header,
+  .section-heading { flex-direction: column; align-items: flex-start; }
 }

@@ -65,7 +65,7 @@ export const scheduleService = {
       note: payload.note,
     });
 
-    const validation = scheduleValidator.validate(schedule, student);
+    const validation = scheduleValidator.validate(schedule, student, schedules);
     if (!validation.valid) {
       return { success: false, message: validation.message };
     }
