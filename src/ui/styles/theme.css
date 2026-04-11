@@ -1,0 +1,122 @@
+:root {
+  --bg: #fff7ef;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-strong: #ffffff;
+  --text: #183153;
+  --muted: #62748a;
+  --line: rgba(24, 49, 83, 0.12);
+  --primary: #ff7a18;
+  --primary-strong: #ff5714;
+  --secondary: #1f8ef1;
+  --success: #14b87a;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --shadow: 0 24px 80px rgba(27, 56, 92, 0.18);
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Be Vietnam Pro", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255, 122, 24, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(31, 142, 241, 0.22), transparent 24%),
+    linear-gradient(180deg, #fff8f1 0%, #f7fbff 100%);
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; border: none; }
+#app { min-height: 100vh; }
+.login-screen, .dashboard-screen { min-height: 100vh; padding: 32px; }
+.login-screen { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 24px; align-items: stretch; }
+.login-hero, .login-panel, .topbar, .filter-bar, .stat-card, .student-card, .panel, .empty-state {
+  backdrop-filter: blur(18px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.login-hero, .login-panel { border-radius: var(--radius-xl); padding: 40px; }
+.login-hero { display: flex; flex-direction: column; justify-content: space-between; }
+.login-hero h1, .topbar h1 { margin: 8px 0 16px; font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1; }
+.hero-copy, .topbar p, .muted, .detail-summary p, .empty-state p, .stage-note { color: var(--muted); }
+.demo-accounts, .login-form, .student-form, .detail-summary, .dashboard-screen { display: grid; gap: 18px; }
+.demo-accounts__card, .detail-card, .toggle-card {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(24, 49, 83, 0.08);
+  border-radius: var(--radius-md);
+  padding: 18px;
+}
+.demo-accounts__card span, .topbar__account span, .field span, .detail-card span, .stat-card p, .eyebrow {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; }
+.login-panel { display: flex; align-items: center; justify-content: center; }
+.field { display: grid; gap: 8px; }
+.field input, .field select {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 49, 83, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 14px 16px;
+  color: var(--text);
+}
+.primary-button, .secondary-button, .ghost-danger-button, .icon-button {
+  border-radius: 999px;
+  padding: 14px 20px;
+  font-weight: 700;
+}
+.primary-button { background: linear-gradient(135deg, var(--primary), var(--primary-strong)); color: #fff; }
+.secondary-button { background: rgba(31, 142, 241, 0.12); color: var(--secondary); }
+.ghost-danger-button { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+.icon-button {
+  width: 48px; height: 48px; padding: 0; background: rgba(24, 49, 83, 0.08); color: var(--text); font-size: 1.8rem; line-height: 1;
+}
+.topbar, .toolbar, .student-card__footer, .topbar__account, .student-card__header, .student-card__body, .panel__header, .form-actions, .metric-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+.topbar { border-radius: var(--radius-xl); padding: 28px 32px; }
+.stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+.stat-card { border-radius: var(--radius-lg); padding: 20px; position: relative; overflow: hidden; }
+.stat-card strong { font-size: 1.8rem; }
+.stat-card::after {
+  content: ""; position: absolute; inset: auto -30px -30px auto; width: 96px; height: 96px; border-radius: 50%; opacity: 0.16;
+}
+.stat-card.orange::after { background: var(--primary); }
+.stat-card.cyan::after { background: #22c3ee; }
+.stat-card.red::after { background: var(--danger); }
+.stat-card.green::after { background: var(--success); }
+.stat-card.blue::after { background: var(--secondary); }
+.stat-card.yellow::after { background: #ffd166; }
+.filter-bar { border-radius: var(--radius-lg); padding: 18px; display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 12px; }
+.student-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.student-card { border-radius: var(--radius-lg); padding: 20px; display: grid; gap: 16px; }
+.student-card__status { display: flex; flex-wrap: wrap; gap: 8px; }
+.status-tag { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; }
+.status-tag.success { background: rgba(20, 184, 122, 0.14); color: var(--success); }
+.status-tag.warning { background: rgba(245, 158, 11, 0.14); color: var(--warning); }
+.status-tag.danger { background: rgba(239, 68, 68, 0.14); color: var(--danger); }
+.modal-shell { position: fixed; inset: 0; background: rgba(10, 22, 37, 0.5); display: grid; place-items: center; padding: 24px; }
+.panel {
+  width: min(760px, 100%);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.92));
+}
+.form-grid, .toggle-grid, .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.toggle-card { display: flex; gap: 12px; align-items: center; }
+.empty-state { border-radius: var(--radius-xl); padding: 40px; text-align: center; }
+.form-message { margin: 0; color: var(--danger); font-size: 0.92rem; font-weight: 600; }
+@media (max-width: 1180px) {
+  .stats-grid, .student-list, .filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .login-screen, .student-list, .form-grid, .toggle-grid, .detail-grid, .filter-bar, .stats-grid { grid-template-columns: 1fr; }
+  .topbar, .toolbar, .student-card__footer, .topbar__account { flex-direction: column; align-items: flex-start; }
+  .login-screen, .dashboard-screen { padding: 20px; }
+}

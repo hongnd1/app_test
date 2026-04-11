@@ -1,0 +1,84 @@
+import { paymentService } from "../../logic/payment/paymentService.js";
+import { progressService } from "../../logic/progress/progressService.js";
+import { createStatusTag } from "./StatusTag.js";
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(value);
+}
+
+export function createStudentCard(student, actions) {
+  const card = document.createElement("article");
+  card.className = "student-card";
+
+  const paymentStatus = paymentService.getPaymentStatus(student);
+  const datStatus = progressService.getDatStatus(student);
+
+  const header = document.createElement("div");
+  header.className = "student-card__header";
+  header.innerHTML = `
+    <div>
+      <p class="eyebrow">${student.id}</p>
+      <h3>${student.ten}</h3>
+      <p class="muted">${student.cccd}</p>
+    </div>
+  `;
+
+  const body = document.createElement("div");
+  body.className = "student-card__body";
+  body.innerHTML = `
+    <div class="metric-row">
+      <span>Da nop</span>
+      <strong>${formatCurrency(student.daNop)}</strong>
+    </div>
+    <div class="metric-row">
+      <span>Con thieu</span>
+      <strong>${formatCurrency(student.conThieu)}</strong>
+    </div>
+    <div class="metric-row">
+      <span>Km DAT</span>
+      <strong>${student.soKmDAT} km</strong>
+    </div>
+    <p class="stage-note">${progressService.getStageSummary(student)}</p>
+  `;
+
+  const statusGroup = document.createElement("div");
+  statusGroup.className = "student-card__status";
+  statusGroup.append(
+    createStatusTag(paymentStatus),
+    createStatusTag({
+      label: student.daHocLyThuyet ? "Da hoc ly thuyet" : "Chua hoc ly thuyet",
+      tone: student.daHocLyThuyet ? "success" : "danger",
+    }),
+    createStatusTag({
+      label: student.daHocSaHinh ? "Da hoc sa hinh" : "Chua hoc sa hinh",
+      tone: student.daHocSaHinh ? "success" : "warning",
+    }),
+    createStatusTag(datStatus),
+  );
+
+  const footer = document.createElement("div");
+  footer.className = "student-card__footer";
+
+  const detailButton = document.createElement("button");
+  detailButton.className = "secondary-button";
+  detailButton.textContent = "Chi tiet";
+  detailButton.addEventListener("click", () => actions.onOpenDetail(student.id));
+
+  const editButton = document.createElement("button");
+  editButton.className = "secondary-button";
+  editButton.textContent = "Sua";
+  editButton.addEventListener("click", () => actions.onEdit(student.id));
+
+  const deleteButton = document.createElement("button");
+  deleteButton.className = "ghost-danger-button";
+  deleteButton.textContent = "Xoa";
+  deleteButton.addEventListener("click", () => actions.onDelete(student.id));
+
+  footer.append(detailButton, editButton, deleteButton);
+  card.append(header, body, statusGroup, footer);
+
+  return card;
+}
