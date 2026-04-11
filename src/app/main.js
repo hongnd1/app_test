@@ -151,11 +151,29 @@ function handleStatFilter(statKey) {
     nextFilters.datFilter = "reached";
   }
 
+  if (nextKey === "paidCompleted") {
+    nextFilters.paymentFilter = "paid";
+  }
+
   if (nextKey === "totalRevenue") {
     nextFilters.minPaidAmount = "1";
   }
 
   updateUi(nextFilters);
+}
+
+function getActiveFilterLabel(activeStatFilter) {
+  const labels = {
+    all: "Toàn bộ học viên",
+    theoryCompleted: "Học viên đã học lý thuyết",
+    unpaid: "Học viên còn thiếu học phí",
+    saHinhCompleted: "Học viên đã học sa hình",
+    datReached: "Học viên đã đạt DAT",
+    paidCompleted: "Học viên đã hoàn tất học phí",
+    totalRevenue: "Học viên đã nộp tiền",
+  };
+
+  return labels[activeStatFilter] ?? "Toàn bộ học viên";
 }
 
 function render() {
@@ -178,6 +196,7 @@ function render() {
     ? studentService.getStudentById(state.ui.detailStudentId)
     : null;
   const statistics = progressService.getDashboardStatistics(state.students);
+  const progressOverview = progressService.getProgressOverview(state.students);
 
   appElement.innerHTML = "";
   DashboardScreen(appElement, {
@@ -185,6 +204,8 @@ function render() {
     students: filteredStudents,
     totalStudents: state.students.length,
     statistics,
+    progressOverview,
+    activeFilterLabel: getActiveFilterLabel(state.ui.activeStatFilter),
     filters: state.ui,
     editingStudent,
     detailStudent,

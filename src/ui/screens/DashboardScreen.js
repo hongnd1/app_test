@@ -24,43 +24,73 @@ function createStatCard(config, onClick) {
   return element;
 }
 
+function createProgressBar(item, onClick, activeStatFilter) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `progress-row ${activeStatFilter === item.key ? "is-active" : ""}`;
+  button.innerHTML = `
+    <div class="progress-row__header">
+      <strong>${item.label}</strong>
+      <span>${item.count}/${item.total} học viên</span>
+    </div>
+    <div class="progress-track">
+      <span class="progress-fill" style="width:${item.percent}%"></span>
+    </div>
+    <p>${item.percent}% hoàn thành</p>
+  `;
+  button.addEventListener("click", () => onClick(item.key));
+  return button;
+}
+
 export function DashboardScreen(root, props) {
   const container = document.createElement("main");
-  container.className = "dashboard-screen";
+  container.className = "dashboard-screen compact-dashboard";
 
   const remainingInfo =
     props.session.accountType === "trial"
-      ? `Còn ${props.session.remainingDays} ngày sử dụng`
-      : "Tài khoản vĩnh viễn";
+      ? `Còn ${props.session.remainingDays} ngày`
+      : "Vĩnh viễn";
 
   container.innerHTML = `
-    <header class="topbar">
+    <header class="topbar compact-topbar">
       <div>
-        <p class="eyebrow">Hệ thống quản lý học sinh</p>
-        <h1>Bảng điều khiển BLX</h1>
+        <p class="eyebrow">BLX Student Manager</p>
+        <h1>Bảng điều khiển</h1>
+        <span class="topbar__meta">${props.session.displayName} · ${remainingInfo}</span>
       </div>
-      <div class="topbar__account">
-        <div>
-          <strong>${props.session.displayName}</strong>
-          <span>${props.session.accountType === "trial" ? "Dùng thử 7 ngày" : "Bản chính thức"} - ${remainingInfo}</span>
-        </div>
-        <button class="secondary-button" type="button">Đăng xuất</button>
+      <div class="topbar__actions">
+        <button class="primary-button add-button" type="button">Thêm học sinh</button>
+        <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
       </div>
     </header>
+    <section class="progress-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Tiến độ tổng hợp</p>
+          <h2>Học viên đã đạt từng phần</h2>
+        </div>
+      </div>
+      <div class="progress-grid"></div>
+    </section>
     <section class="stats-grid"></section>
-    <p class="stats-note">Chạm vào từng ô để lọc nhanh danh sách học viên theo tiêu chí của ô đó.</p>
-    <section class="toolbar">
+    <section class="toolbar compact-toolbar">
       <div>
-        <h2>Danh sách học sinh</h2>
+        <p class="eyebrow">Đang xem</p>
+        <h2>${props.activeFilterLabel}</h2>
         <p>${props.students.length} / ${props.totalStudents} học sinh đang hiển thị</p>
       </div>
-      <button class="primary-button" type="button">Thêm học sinh</button>
     </section>
   `;
 
-  const [logoutButton, addStudentButton] = container.querySelectorAll("button");
+  const logoutButton = container.querySelector(".icon-logout-button");
+  const addStudentButton = container.querySelector(".add-button");
   logoutButton.addEventListener("click", props.onLogout);
   addStudentButton.addEventListener("click", props.onOpenCreateForm);
+
+  const progressGrid = container.querySelector(".progress-grid");
+  props.progressOverview.forEach((item) => {
+    progressGrid.appendChild(createProgressBar(item, props.onStatFilter, props.filters.activeStatFilter));
+  });
 
   const statsGrid = container.querySelector(".stats-grid");
   statsGrid.append(
@@ -82,7 +112,7 @@ export function DashboardScreen(root, props) {
         accent: "cyan",
         statKey: "theoryCompleted",
         activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc theo lý thuyết",
+        helper: "Lọc ngay",
       },
       props.onStatFilter,
     ),
@@ -93,7 +123,7 @@ export function DashboardScreen(root, props) {
         accent: "red",
         statKey: "unpaid",
         activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc theo học phí",
+        helper: "Lọc ngay",
       },
       props.onStatFilter,
     ),
@@ -104,7 +134,7 @@ export function DashboardScreen(root, props) {
         accent: "green",
         statKey: "saHinhCompleted",
         activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc theo sa hình",
+        helper: "Lọc ngay",
       },
       props.onStatFilter,
     ),
@@ -115,18 +145,18 @@ export function DashboardScreen(root, props) {
         accent: "blue",
         statKey: "datReached",
         activeStatFilter: props.filters.activeStatFilter,
-        helper: "Lọc theo DAT",
+        helper: "Lọc ngay",
       },
       props.onStatFilter,
     ),
     createStatCard(
       {
-        label: "Doanh thu",
-        value: formatCurrency(props.statistics.totalRevenue),
+        label: "Đã đủ học phí",
+        value: props.progressOverview.find((item) => item.key === "paidCompleted")?.count ?? 0,
         accent: "yellow",
-        statKey: "totalRevenue",
+        statKey: "paidCompleted",
         activeStatFilter: props.filters.activeStatFilter,
-        helper: "Học viên đã nộp tiền",
+        helper: "Lọc ngay",
       },
       props.onStatFilter,
     ),
@@ -146,7 +176,7 @@ export function DashboardScreen(root, props) {
     empty.className = "empty-state";
     empty.innerHTML = `
       <h3>Không có học sinh phù hợp</h3>
-      <p>Thử đổi bộ lọc hoặc thêm học sinh mới vào hệ thống.</p>
+      <p>Thử đổi bộ lọc hoặc chọn mục khác để xem danh sách.</p>
     `;
     list.appendChild(empty);
   } else {

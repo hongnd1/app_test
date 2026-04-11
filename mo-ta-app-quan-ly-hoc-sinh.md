@@ -143,6 +143,10 @@ Màn hình chính có thể gồm:
 - Các ô thống kê nhanh phải hiển thị dạng **ô vuông** để dễ chạm và dễ đọc
 - Khi chạm vào từng ô thống kê, hệ thống sẽ **tự động áp bộ lọc** theo tiêu chí của ô đó
 - Bộ lọc và form nhập liệu cần xếp lại hợp lý để thao tác tốt bằng một tay
+- Khu vực đầu trang cần gọn, nút đăng xuất thu nhỏ về góc trên cùng bên phải để không chiếm nhiều diện tích
+- Màn hình chính cần ưu tiên hiển thị một vùng chức năng rõ ràng, không để phần điều khiển đầu trang chiếm quá nhiều chiều cao
+- Có thêm **thanh tiến độ tổng hợp** để hiển thị số học viên đã đạt từng phần như: lý thuyết, sa hình, DAT và học phí
+- Khi bấm vào một ô hoặc một thanh tiến độ, danh sách học viên bên dưới phải đổi ngay sang đúng nhóm đã chọn
 
 ---
 
