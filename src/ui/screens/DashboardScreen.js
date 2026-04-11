@@ -1,168 +1,194 @@
-﻿:root {
-  --bg: #fff7ef;
-  --surface: rgba(255, 255, 255, 0.82);
-  --surface-strong: #ffffff;
-  --text: #183153;
-  --muted: #62748a;
-  --line: rgba(24, 49, 83, 0.12);
-  --primary: #ff7a18;
-  --primary-strong: #ff5714;
-  --secondary: #1f8ef1;
-  --success: #14b87a;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #5b7cfa;
-  --shadow: 0 24px 80px rgba(27, 56, 92, 0.18);
-  --radius-xl: 32px;
-  --radius-lg: 24px;
-  --radius-md: 18px;
+﻿import { createFilterBar } from "../components/FilterBar.js";
+import { createStudentCard } from "../components/StudentCard.js";
+import { createStudentDetail } from "../components/StudentDetail.js";
+import { createStudentForm } from "../components/StudentForm.js";
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: "Be Vietnam Pro", sans-serif;
-  color: var(--text);
-  background:
-    radial-gradient(circle at top left, rgba(255, 122, 24, 0.24), transparent 28%),
-    radial-gradient(circle at top right, rgba(31, 142, 241, 0.22), transparent 24%),
-    linear-gradient(180deg, #fff8f1 0%, #f7fbff 100%);
+function createStatCard(config, onClick) {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = `stat-card ${config.accent} ${config.activeStatFilter === config.statKey ? "is-active" : ""}`;
+  element.innerHTML = `
+    <p>${config.label}</p>
+    <strong>${config.value}</strong>
+    <span class="stat-card__hint">${config.helper}</span>
+  `;
+  element.addEventListener("click", () => onClick(config.statKey));
+  return element;
 }
-button, input, select { font: inherit; }
-button { cursor: pointer; border: none; }
-#app { min-height: 100vh; }
-.login-screen, .dashboard-screen { min-height: 100vh; padding: 24px; }
-.login-screen { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 24px; align-items: stretch; }
-.login-hero, .login-panel, .topbar, .filter-bar, .stat-card, .student-card, .panel, .empty-state {
-  backdrop-filter: blur(18px);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-}
-.login-hero, .login-panel { border-radius: var(--radius-xl); padding: 32px; }
-.login-hero { display: flex; flex-direction: column; justify-content: space-between; }
-.login-hero h1, .topbar h1 { margin: 8px 0 16px; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
-.hero-copy, .topbar p, .muted, .detail-summary p, .empty-state p, .stage-note, .stats-note { color: var(--muted); }
-.demo-accounts, .login-form, .student-form, .detail-summary, .dashboard-screen { display: grid; gap: 18px; }
-.demo-accounts__card, .detail-card, .toggle-card {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(24, 49, 83, 0.08);
-  border-radius: var(--radius-md);
-  padding: 18px;
-}
-.demo-accounts__card span, .topbar__account span, .field span, .detail-card span, .stat-card p, .eyebrow, .stat-card__hint {
-  display: block;
-  font-size: 0.88rem;
-  color: var(--muted);
-}
-.eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; }
-.login-panel { display: flex; align-items: center; justify-content: center; }
-.field { display: grid; gap: 8px; }
-.field input, .field select {
-  width: 100%;
-  border-radius: 16px;
-  border: 1px solid rgba(24, 49, 83, 0.12);
-  background: rgba(255, 255, 255, 0.9);
-  padding: 14px 16px;
-  color: var(--text);
-}
-.primary-button, .secondary-button, .ghost-danger-button, .icon-button {
-  border-radius: 999px;
-  padding: 14px 20px;
-  font-weight: 700;
-}
-.primary-button { background: linear-gradient(135deg, var(--primary), var(--primary-strong)); color: #fff; }
-.secondary-button { background: rgba(31, 142, 241, 0.12); color: var(--secondary); }
-.ghost-danger-button { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-.icon-button {
-  width: 48px; height: 48px; padding: 0; background: rgba(24, 49, 83, 0.08); color: var(--text); font-size: 1.8rem; line-height: 1;
-}
-.topbar, .toolbar, .student-card__footer, .topbar__account, .student-card__header, .student-card__body, .panel__header, .form-actions, .metric-row {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px;
-}
-.topbar { border-radius: var(--radius-xl); padding: 24px 28px; }
-.stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
-.stats-note { margin: -4px 0 0; font-size: 0.95rem; }
-.stat-card {
-  border-radius: var(--radius-lg);
-  padding: 18px;
-  position: relative;
-  overflow: hidden;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 10px;
-}
-.stat-card strong { font-size: clamp(1.35rem, 2vw, 1.9rem); line-height: 1.1; }
-.stat-card::after {
-  content: ""; position: absolute; inset: auto -30px -30px auto; width: 96px; height: 96px; border-radius: 50%; opacity: 0.16;
-}
-.stat-card.orange::after { background: var(--primary); }
-.stat-card.cyan::after { background: #22c3ee; }
-.stat-card.red::after { background: var(--danger); }
-.stat-card.green::after { background: var(--success); }
-.stat-card.blue::after { background: var(--secondary); }
-.stat-card.yellow::after { background: #ffd166; }
-.stat-card.is-active {
-  border-color: rgba(24, 49, 83, 0.24);
-  transform: translateY(-2px);
-  box-shadow: 0 18px 45px rgba(27, 56, 92, 0.24);
-}
-.toolbar { flex-wrap: wrap; }
-.toolbar h2, .panel h2, .student-card h3 { margin: 0; }
-.filter-bar { border-radius: var(--radius-lg); padding: 18px; display: grid; grid-template-columns: 2fr repeat(6, 1fr); gap: 12px; }
-.student-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-.student-card { border-radius: var(--radius-lg); padding: 20px; display: grid; gap: 16px; }
-.student-card__status { display: flex; flex-wrap: wrap; gap: 8px; }
-.status-tag { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; }
-.status-tag.success { background: rgba(20, 184, 122, 0.14); color: var(--success); }
-.status-tag.warning { background: rgba(245, 158, 11, 0.14); color: var(--warning); }
-.status-tag.danger { background: rgba(239, 68, 68, 0.14); color: var(--danger); }
-.status-tag.info { background: rgba(91, 124, 250, 0.14); color: var(--info); }
-.modal-shell { position: fixed; inset: 0; background: rgba(10, 22, 37, 0.5); display: grid; place-items: center; padding: 16px; }
-.panel {
-  width: min(760px, 100%);
-  max-height: calc(100vh - 32px);
-  overflow: auto;
-  border-radius: var(--radius-xl);
-  padding: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.92));
-}
-.form-grid, .toggle-grid, .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.toggle-card { display: flex; gap: 12px; align-items: center; }
-.empty-state { border-radius: var(--radius-xl); padding: 40px; text-align: center; }
-.form-message { margin: 0; color: var(--danger); font-size: 0.92rem; font-weight: 600; }
-@media (max-width: 1180px) {
-  .stats-grid, .student-list, .filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 900px) {
-  .login-screen,
-  .student-list,
-  .form-grid,
-  .toggle-grid,
-  .detail-grid,
-  .filter-bar,
-  .stats-grid { grid-template-columns: 1fr; }
 
-  .topbar,
-  .toolbar,
-  .student-card__footer,
-  .topbar__account,
-  .student-card__header,
-  .student-card__body,
-  .metric-row { flex-direction: column; align-items: flex-start; }
+export function DashboardScreen(root, props) {
+  const container = document.createElement("main");
+  container.className = "dashboard-screen";
 
-  .login-screen, .dashboard-screen { padding: 16px; }
-  .login-hero, .login-panel, .topbar, .panel, .student-card, .filter-bar { padding: 20px; }
-  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .stat-card {
-    aspect-ratio: 1 / 1;
-    min-height: 150px;
-    padding: 16px;
+  const remainingInfo =
+    props.session.accountType === "trial"
+      ? `Còn ${props.session.remainingDays} ngày sử dụng`
+      : "Tài khoản vĩnh viễn";
+
+  container.innerHTML = `
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Hệ thống quản lý học sinh</p>
+        <h1>Bảng điều khiển BLX</h1>
+      </div>
+      <div class="topbar__account">
+        <div>
+          <strong>${props.session.displayName}</strong>
+          <span>${props.session.accountType === "trial" ? "Dùng thử 7 ngày" : "Bản chính thức"} - ${remainingInfo}</span>
+        </div>
+        <button class="secondary-button" type="button">Đăng xuất</button>
+      </div>
+    </header>
+    <section class="stats-grid"></section>
+    <p class="stats-note">Chạm vào từng ô để lọc nhanh danh sách học viên theo tiêu chí của ô đó.</p>
+    <section class="toolbar">
+      <div>
+        <h2>Danh sách học sinh</h2>
+        <p>${props.students.length} / ${props.totalStudents} học sinh đang hiển thị</p>
+      </div>
+      <button class="primary-button" type="button">Thêm học sinh</button>
+    </section>
+  `;
+
+  const [logoutButton, addStudentButton] = container.querySelectorAll("button");
+  logoutButton.addEventListener("click", props.onLogout);
+  addStudentButton.addEventListener("click", props.onOpenCreateForm);
+
+  const statsGrid = container.querySelector(".stats-grid");
+  statsGrid.append(
+    createStatCard(
+      {
+        label: "Tổng học sinh",
+        value: props.totalStudents,
+        accent: "orange",
+        statKey: "all",
+        activeStatFilter: props.filters.activeStatFilter,
+        helper: "Hiện toàn bộ",
+      },
+      props.onStatFilter,
+    ),
+    createStatCard(
+      {
+        label: "Đã học lý thuyết",
+        value: props.statistics.theoryCompleted,
+        accent: "cyan",
+        statKey: "theoryCompleted",
+        activeStatFilter: props.filters.activeStatFilter,
+        helper: "Lọc theo lý thuyết",
+      },
+      props.onStatFilter,
+    ),
+    createStatCard(
+      {
+        label: "Còn thiếu học phí",
+        value: props.statistics.unpaid,
+        accent: "red",
+        statKey: "unpaid",
+        activeStatFilter: props.filters.activeStatFilter,
+        helper: "Lọc theo học phí",
+      },
+      props.onStatFilter,
+    ),
+    createStatCard(
+      {
+        label: "Đã học sa hình",
+        value: props.statistics.saHinhCompleted,
+        accent: "green",
+        statKey: "saHinhCompleted",
+        activeStatFilter: props.filters.activeStatFilter,
+        helper: "Lọc theo sa hình",
+      },
+      props.onStatFilter,
+    ),
+    createStatCard(
+      {
+        label: "DAT đạt mức",
+        value: props.statistics.datReached,
+        accent: "blue",
+        statKey: "datReached",
+        activeStatFilter: props.filters.activeStatFilter,
+        helper: "Lọc theo DAT",
+      },
+      props.onStatFilter,
+    ),
+    createStatCard(
+      {
+        label: "Doanh thu",
+        value: formatCurrency(props.statistics.totalRevenue),
+        accent: "yellow",
+        statKey: "totalRevenue",
+        activeStatFilter: props.filters.activeStatFilter,
+        helper: "Học viên đã nộp tiền",
+      },
+      props.onStatFilter,
+    ),
+  );
+
+  container.appendChild(
+    createFilterBar(props.filters, {
+      onChange: props.onFilterChange,
+    }),
+  );
+
+  const list = document.createElement("section");
+  list.className = "student-list";
+
+  if (props.students.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.innerHTML = `
+      <h3>Không có học sinh phù hợp</h3>
+      <p>Thử đổi bộ lọc hoặc thêm học sinh mới vào hệ thống.</p>
+    `;
+    list.appendChild(empty);
+  } else {
+    props.students.forEach((student) => {
+      list.appendChild(
+        createStudentCard(student, {
+          onOpenDetail: props.onOpenDetail,
+          onEdit: props.onOpenEditForm,
+          onDelete: props.onDeleteStudent,
+        }),
+      );
+    });
   }
-  .stat-card strong { font-size: 1.2rem; }
-  .stat-card p, .stat-card__hint { font-size: 0.82rem; }
-  .toolbar .primary-button, .topbar .secondary-button { width: 100%; }
+
+  container.appendChild(list);
+
+  if (props.filters.formMode === "create" || props.editingStudent) {
+    const modal = document.createElement("div");
+    modal.className = "modal-shell";
+    modal.appendChild(
+      createStudentForm(props.editingStudent, props.filters.formMode, {
+        onClose: props.onCloseForm,
+        onSave: props.onSaveStudent,
+      }),
+    );
+    container.appendChild(modal);
+  }
+
+  if (props.detailStudent) {
+    const modal = document.createElement("div");
+    modal.className = "modal-shell";
+    modal.appendChild(
+      createStudentDetail(props.detailStudent, {
+        onClose: props.onCloseDetail,
+        onEdit: (studentId) => {
+          props.onCloseDetail();
+          props.onOpenEditForm(studentId);
+        },
+      }),
+    );
+    container.appendChild(modal);
+  }
+
+  root.appendChild(container);
 }

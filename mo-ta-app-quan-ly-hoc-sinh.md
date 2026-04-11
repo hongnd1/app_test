@@ -246,3 +246,10 @@ src/
 - Quản lý tiến độ học tập
 
 Ứng dụng cần có giao diện trẻ trung, năng động, dễ sử dụng, hỗ trợ lọc dữ liệu hiệu quả và đặc biệt phải tối ưu tốt cho điện thoại để kiểm tra nhanh trên thiết bị di động.
+
+---
+
+## 12. Ghi chú cập nhật
+- Sau các lần chỉnh sửa giao diện hoặc chức năng, tài liệu mô tả cần được cập nhật đồng thời.
+- Mỗi lần sửa xong cần commit và push ngay để có thể kiểm tra nhanh trên điện thoại qua link web.
+- Nếu gặp hiện tượng trang trắng khi mở web, cần ưu tiên kiểm tra các file `entry` và `screen` để tránh lỗi import hoặc ghi nhầm nội dung file.
