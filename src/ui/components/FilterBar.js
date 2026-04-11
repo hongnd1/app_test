@@ -3,7 +3,7 @@
   wrapper.className = "filter-bar";
 
   wrapper.innerHTML = `
-    <label class="field">
+    <label class="field search-field">
       <span>Tìm nhanh</span>
       <input type="search" name="searchTerm" placeholder="Nhập tên hoặc CCCD" value="${filters.searchTerm}" />
     </label>
@@ -63,11 +63,12 @@
       element.value = filters[element.name];
     }
 
-    element.addEventListener("input", () => {
+    const eventName = element.name === "searchTerm" ? "input" : "change";
+    element.addEventListener(eventName, () => {
       handlers.onChange({
         [element.name]: element.value,
         activeStatFilter: "all",
-      });
+      }, { preserveSearchFocus: element.name === "searchTerm" });
     });
   });
 

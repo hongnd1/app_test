@@ -9,9 +9,24 @@ function formatCurrency(value) {
   }).format(value);
 }
 
-export function createStudentCard(student, actions) {
+export function createStudentCard(student, actions, options = {}) {
+  const compact = options.compact ?? false;
   const card = document.createElement("article");
-  card.className = "student-card";
+  card.className = `student-card ${compact ? "student-card--compact" : ""}`;
+
+  if (compact) {
+    card.innerHTML = `
+      <button class="student-compact-item" type="button">
+        <div>
+          <h3>${student.ten}</h3>
+          <p class="muted">Hạng ${student.loaiBang}</p>
+        </div>
+        <span class="student-compact-arrow">›</span>
+      </button>
+    `;
+    card.querySelector("button").addEventListener("click", () => actions.onOpenDetail(student.id));
+    return card;
+  }
 
   const paymentStatus = paymentService.getPaymentStatus(student);
   const datStatus = progressService.getDatStatus(student);

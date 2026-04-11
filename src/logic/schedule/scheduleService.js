@@ -24,6 +24,30 @@ function todayString(offsetDays = 0) {
   return base.toISOString().slice(0, 10);
 }
 
+function getCalendarDays(month, year, schedules, selectedDate) {
+  const firstDay = new Date(year, month, 1);
+  const startWeekDay = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+  const items = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const dayNumber = index - startWeekDay + 1;
+    const date = new Date(year, month, dayNumber);
+    const iso = date.toISOString().slice(0, 10);
+    items.push({
+      iso,
+      label: date.getDate(),
+      inCurrentMonth: date.getMonth() === month,
+      isToday: iso === todayString(0),
+      isSelected: iso === selectedDate,
+      hasSchedule: schedules.some((item) => item.date === iso),
+    });
+  }
+
+  return items;
+}
+
 export const scheduleService = {
   getAllSchedules() {
     return normalizeSchedules(scheduleRepository.getAll());
@@ -55,7 +79,7 @@ export const scheduleService = {
     scheduleRepository.saveAll(schedules.filter((item) => item.id !== scheduleId));
   },
 
-  getScheduleBuckets() {
+  getScheduleBuckets({ month, year, selectedDate }) {
     const schedules = this.getAllSchedules();
     const today = todayString(0);
     const tomorrow = todayString(1);
@@ -64,6 +88,8 @@ export const scheduleService = {
       today: schedules.filter((item) => item.date === today),
       tomorrow: schedules.filter((item) => item.date === tomorrow),
       all: schedules,
+      selectedDay: schedules.filter((item) => item.date === selectedDate),
+      calendarDays: getCalendarDays(month, year, schedules, selectedDate),
     };
   },
 };

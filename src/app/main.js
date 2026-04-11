@@ -9,6 +9,8 @@ import { DashboardScreen } from "../ui/screens/DashboardScreen.js";
 import { LoginScreen } from "../ui/screens/LoginScreen.js";
 
 const appElement = document.getElementById("app");
+const today = new Date();
+const initialDate = today.toISOString().slice(0, 10);
 
 const state = {
   session: accountService.getActiveSession(),
@@ -17,6 +19,9 @@ const state = {
   ui: {
     activeTab: "progress",
     scheduleListTab: "all",
+    selectedScheduleDate: initialDate,
+    scheduleMonth: today.getMonth(),
+    scheduleYear: today.getFullYear(),
     searchTerm: "",
     theoryFilter: "all",
     saHinhFilter: "all",
@@ -32,6 +37,8 @@ const state = {
   },
 };
 
+let pendingSearchRefocus = false;
+
 function syncStudents() {
   state.students = studentService.getAllStudents();
 }
@@ -40,9 +47,28 @@ function syncSchedules() {
   state.schedules = scheduleService.getAllSchedules();
 }
 
-function updateUi(patch) {
+function updateUi(patch, options = {}) {
   state.ui = { ...state.ui, ...patch };
+  pendingSearchRefocus = Boolean(options.preserveSearchFocus);
   render();
+}
+
+function refocusSearchIfNeeded() {
+  if (!pendingSearchRefocus) {
+    return;
+  }
+
+  pendingSearchRefocus = false;
+  requestAnimationFrame(() => {
+    const input = document.querySelector('input[name="searchTerm"]');
+    if (!input) {
+      return;
+    }
+
+    input.focus();
+    const length = input.value.length;
+    input.setSelectionRange(length, length);
+  });
 }
 
 function openCreateForm() {
@@ -65,8 +91,8 @@ function closeDetail() {
   updateUi({ detailStudentId: null });
 }
 
-function openScheduleForm(studentId) {
-  updateUi({ scheduleStudentId: studentId, activeTab: "schedule" });
+function openScheduleForm(studentId, date = state.ui.selectedScheduleDate) {
+  updateUi({ scheduleStudentId: studentId, selectedScheduleDate: date, activeTab: "schedule" });
 }
 
 function closeScheduleForm() {
@@ -185,6 +211,19 @@ function handleStatFilter(statKey) {
   updateUi(nextFilters);
 }
 
+function handleOpenStudentTab() {
+  updateUi({
+    activeTab: "students",
+    activeStatFilter: "all",
+    theoryFilter: "all",
+    saHinhFilter: "all",
+    paymentFilter: "all",
+    datFilter: "all",
+    licenseFilter: "all",
+    minPaidAmount: "",
+  });
+}
+
 function handleSaveSchedule(payload) {
   const student = state.students.find((item) => item.id === payload.studentId);
   const result = scheduleService.createSchedule(payload, student);
@@ -193,7 +232,8 @@ function handleSaveSchedule(payload) {
     syncSchedules();
     updateUi({
       scheduleStudentId: null,
-      scheduleListTab: payload.date === new Date().toISOString().slice(0, 10) ? "today" : "all",
+      scheduleListTab: "all",
+      selectedScheduleDate: payload.date,
       activeTab: "schedule",
     });
   }
@@ -239,7 +279,11 @@ function render() {
     : null;
   const statistics = progressService.getDashboardStatistics(state.students);
   const progressOverview = progressService.getProgressOverview(state.students);
-  const scheduleBuckets = scheduleService.getScheduleBuckets();
+  const scheduleBuckets = scheduleService.getScheduleBuckets({
+    month: state.ui.scheduleMonth,
+    year: state.ui.scheduleYear,
+    selectedDate: state.ui.selectedScheduleDate,
+  });
 
   appElement.innerHTML = "";
   DashboardScreen(appElement, {
@@ -257,6 +301,8 @@ function render() {
     onLogout: handleLogout,
     onChangeTab: (activeTab) => updateUi({ activeTab }),
     onChangeScheduleListTab: (scheduleListTab) => updateUi({ scheduleListTab }),
+    onChangeCalendarMonth: (patch) => updateUi(patch),
+    onSelectScheduleDate: (selectedScheduleDate) => updateUi({ selectedScheduleDate, scheduleListTab: "all" }),
     onFilterChange: updateUi,
     onOpenCreateForm: openCreateForm,
     onOpenEditForm: openEditForm,
@@ -266,11 +312,14 @@ function render() {
     onOpenDetail: openDetail,
     onCloseDetail: closeDetail,
     onStatFilter: handleStatFilter,
+    onOpenStudentTab: handleOpenStudentTab,
     onOpenScheduleForm: openScheduleForm,
     onCloseScheduleForm: closeScheduleForm,
     onSaveSchedule: handleSaveSchedule,
     onDeleteSchedule: handleDeleteSchedule,
   });
+
+  refocusSearchIfNeeded();
 }
 
 render();

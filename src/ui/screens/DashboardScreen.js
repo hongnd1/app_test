@@ -3,19 +3,30 @@ import { createStudentCard } from "../components/StudentCard.js";
 import { createStudentDetail } from "../components/StudentDetail.js";
 import { createStudentForm } from "../components/StudentForm.js";
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
+function monthLabel(month, year) {
+  const names = [
+    "Tháng Một",
+    "Tháng Hai",
+    "Tháng Ba",
+    "Tháng Tư",
+    "Tháng Năm",
+    "Tháng Sáu",
+    "Tháng Bảy",
+    "Tháng Tám",
+    "Tháng Chín",
+    "Tháng Mười",
+    "Tháng Mười Một",
+    "Tháng Mười Hai",
+  ];
+
+  return `${names[month]} ${year}`;
 }
 
-function createTabButton(label, key, activeKey, onClick) {
+function createBottomTabButton(label, key, activeKey, onClick) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `tab-button ${activeKey === key ? "is-active" : ""}`;
-  button.textContent = label;
+  button.className = `bottom-tab ${activeKey === key ? "is-active" : ""}`;
+  button.innerHTML = `<span>${label}</span>`;
   button.addEventListener("click", () => onClick(key));
   return button;
 }
@@ -77,7 +88,7 @@ function renderScheduleList(title, schedules, actions) {
   return section;
 }
 
-function createScheduleForm(student, handlers) {
+function createScheduleForm(student, selectedDate, handlers) {
   const wrapper = document.createElement("section");
   wrapper.className = "panel schedule-form-panel";
   wrapper.innerHTML = `
@@ -96,7 +107,7 @@ function createScheduleForm(student, handlers) {
         </label>
         <label class="field">
           <span>Ngày học DAT</span>
-          <input type="date" name="date" required />
+          <input type="date" name="date" value="${selectedDate}" required />
         </label>
         <label class="field">
           <span>Giờ học DAT</span>
@@ -142,6 +153,54 @@ function createScheduleForm(student, handlers) {
   return wrapper;
 }
 
+function createCalendar(props) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "calendar-panel";
+  wrapper.innerHTML = `
+    <div class="calendar-header">
+      <strong>${monthLabel(props.filters.scheduleMonth, props.filters.scheduleYear)}</strong>
+      <div class="calendar-nav">
+        <button type="button" class="icon-logout-button calendar-nav-button" aria-label="Tháng trước">‹</button>
+        <button type="button" class="icon-logout-button calendar-nav-button" aria-label="Tháng sau">›</button>
+      </div>
+    </div>
+    <div class="calendar-weekdays">
+      <span>H</span>
+      <span>B</span>
+      <span>T</span>
+      <span>N</span>
+      <span>S</span>
+      <span>B</span>
+      <span>C</span>
+    </div>
+    <div class="calendar-grid"></div>
+  `;
+
+  const [prevButton, nextButton] = wrapper.querySelectorAll(".calendar-nav-button");
+  prevButton.addEventListener("click", () => {
+    const month = props.filters.scheduleMonth === 0 ? 11 : props.filters.scheduleMonth - 1;
+    const year = props.filters.scheduleMonth === 0 ? props.filters.scheduleYear - 1 : props.filters.scheduleYear;
+    props.onChangeCalendarMonth({ scheduleMonth: month, scheduleYear: year });
+  });
+  nextButton.addEventListener("click", () => {
+    const month = props.filters.scheduleMonth === 11 ? 0 : props.filters.scheduleMonth + 1;
+    const year = props.filters.scheduleMonth === 11 ? props.filters.scheduleYear + 1 : props.filters.scheduleYear;
+    props.onChangeCalendarMonth({ scheduleMonth: month, scheduleYear: year });
+  });
+
+  const grid = wrapper.querySelector(".calendar-grid");
+  props.scheduleBuckets.calendarDays.forEach((day) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `calendar-day ${day.inCurrentMonth ? "" : "is-muted"} ${day.isSelected ? "is-selected" : ""}`;
+    button.innerHTML = `<span>${day.label}</span>${day.hasSchedule ? '<i class="calendar-dot"></i>' : ""}`;
+    button.addEventListener("click", () => props.onSelectScheduleDate(day.iso));
+    grid.appendChild(button);
+  });
+
+  return wrapper;
+}
+
 function renderProgressTab(container, props) {
   const section = document.createElement("section");
   section.className = "tab-panel active";
@@ -154,10 +213,22 @@ function renderProgressTab(container, props) {
     </div>
   `;
 
-  const grid = document.createElement("div");
-  grid.className = "progress-grid";
-  props.progressOverview.forEach((item) => grid.appendChild(createProgressBar(item, props.onStatFilter)));
-  section.appendChild(grid);
+  const quick = document.createElement("div");
+  quick.className = "progress-grid";
+  const totalButton = document.createElement("button");
+  totalButton.type = "button";
+  totalButton.className = "progress-row total-row";
+  totalButton.innerHTML = `
+    <div class="progress-row__header">
+      <strong>Tổng số học viên</strong>
+      <span>${props.totalStudents} học viên</span>
+    </div>
+    <p>Mở tab danh sách học viên</p>
+  `;
+  totalButton.addEventListener("click", props.onOpenStudentTab);
+  quick.appendChild(totalButton);
+  props.progressOverview.forEach((item) => quick.appendChild(createProgressBar(item, props.onStatFilter)));
+  section.appendChild(quick);
   container.appendChild(section);
 }
 
@@ -181,23 +252,14 @@ function renderScheduleTab(container, props) {
   );
   section.appendChild(overview);
 
-  const tabs = document.createElement("div");
-  tabs.className = "tab-strip sub-tabs";
-  tabs.append(
-    createTabButton("Tất cả", "all", props.filters.scheduleListTab, props.onChangeScheduleListTab),
-    createTabButton("Hôm nay", "today", props.filters.scheduleListTab, props.onChangeScheduleListTab),
-    createTabButton("Ngày mai", "tomorrow", props.filters.scheduleListTab, props.onChangeScheduleListTab),
-  );
-  section.appendChild(tabs);
-
-  const selectedSchedules = props.scheduleBuckets[props.filters.scheduleListTab] ?? props.scheduleBuckets.all;
-  section.appendChild(renderScheduleList("Danh sách lịch DAT", selectedSchedules, { onDelete: props.onDeleteSchedule }));
+  section.appendChild(createCalendar(props));
+  section.appendChild(renderScheduleList(`Lịch ngày ${props.filters.selectedScheduleDate}`, props.scheduleBuckets.selectedDay, { onDelete: props.onDeleteSchedule }));
 
   if (props.scheduleStudent) {
     const modal = document.createElement("div");
     modal.className = "modal-shell";
     modal.appendChild(
-      createScheduleForm(props.scheduleStudent, {
+      createScheduleForm(props.scheduleStudent, props.filters.selectedScheduleDate, {
         onClose: props.onCloseScheduleForm,
         onSave: props.onSaveSchedule,
       }),
@@ -230,7 +292,7 @@ function renderStudentsTab(container, props) {
   );
 
   const list = document.createElement("section");
-  list.className = "student-list";
+  list.className = `student-list ${props.filters.searchTerm ? "student-list--search" : ""}`;
 
   if (!props.students.length) {
     const empty = document.createElement("div");
@@ -243,12 +305,16 @@ function renderStudentsTab(container, props) {
   } else {
     props.students.forEach((student) => {
       list.appendChild(
-        createStudentCard(student, {
-          onOpenDetail: props.onOpenDetail,
-          onEdit: props.onOpenEditForm,
-          onDelete: props.onDeleteStudent,
-          onSchedule: props.onOpenScheduleForm,
-        }),
+        createStudentCard(
+          student,
+          {
+            onOpenDetail: props.onOpenDetail,
+            onEdit: props.onOpenEditForm,
+            onDelete: props.onDeleteStudent,
+            onSchedule: (studentId) => props.onOpenScheduleForm(studentId, props.filters.selectedScheduleDate),
+          },
+          { compact: Boolean(props.filters.searchTerm) },
+        ),
       );
     });
   }
@@ -287,7 +353,7 @@ function renderStudentsTab(container, props) {
 
 export function DashboardScreen(root, props) {
   const container = document.createElement("main");
-  container.className = "dashboard-screen tabbed-dashboard";
+  container.className = "dashboard-screen tabbed-dashboard bottom-nav-layout";
 
   const remainingInfo =
     props.session.accountType === "trial"
@@ -303,18 +369,11 @@ export function DashboardScreen(root, props) {
       </div>
       <button class="icon-logout-button" type="button" aria-label="Đăng xuất">⎋</button>
     </header>
-    <nav class="tab-strip main-tabs"></nav>
     <section class="tab-content"></section>
+    <nav class="bottom-tabbar"></nav>
   `;
 
   container.querySelector(".icon-logout-button").addEventListener("click", props.onLogout);
-
-  const tabStrip = container.querySelector(".main-tabs");
-  tabStrip.append(
-    createTabButton("Tiến độ học viên", "progress", props.filters.activeTab, props.onChangeTab),
-    createTabButton("Lịch học", "schedule", props.filters.activeTab, props.onChangeTab),
-    createTabButton("Danh sách học viên", "students", props.filters.activeTab, props.onChangeTab),
-  );
 
   const content = container.querySelector(".tab-content");
   if (props.filters.activeTab === "progress") {
@@ -326,6 +385,13 @@ export function DashboardScreen(root, props) {
   if (props.filters.activeTab === "students") {
     renderStudentsTab(content, props);
   }
+
+  const bottomBar = container.querySelector(".bottom-tabbar");
+  bottomBar.append(
+    createBottomTabButton("Tiến độ", "progress", props.filters.activeTab, props.onChangeTab),
+    createBottomTabButton("Lịch học", "schedule", props.filters.activeTab, props.onChangeTab),
+    createBottomTabButton("Học viên", "students", props.filters.activeTab, props.onChangeTab),
+  );
 
   root.appendChild(container);
 }
