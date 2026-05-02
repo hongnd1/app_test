@@ -457,6 +457,7 @@ async function handleGoogleLogin() {
 
 async function handleLogout() {
   try {
+    state.loginMessage = "";
     if (notificationModeService.isFcmMode()) {
       const notificationService = await getFcmNotificationService();
       await notificationService.disableCurrentDeviceToken(state.session);
@@ -924,7 +925,6 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
 
   state.session = session;
   state.authReady = true;
-  state.loginMessage = "";
   refreshNotificationState();
   resetUiState();
 
@@ -934,6 +934,7 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
     return;
   }
 
+  state.loginMessage = "";
   await loadDashboardData();
   syncReminderScheduler();
   maybeTriggerScheduleReminder(new Date());
