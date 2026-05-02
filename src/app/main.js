@@ -1,5 +1,4 @@
-import { accountService } from "../logic/auth/accountService.js";
-import { loginService } from "../logic/auth/loginService.js";
+import { firebaseAuthService } from "../logic/auth/firebaseAuthService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
 import { progressService } from "../logic/progress/progressService.js";
@@ -12,12 +11,22 @@ const appElement = document.getElementById("app");
 const today = new Date();
 const initialDate = today.toISOString().slice(0, 10);
 
+const defaultPermissions = {
+  canCreateStudent: false,
+  canEditStudent: false,
+  canDeleteStudent: false,
+  canCreateSchedule: false,
+  canDeleteSchedule: false,
+};
+
 const state = {
-  session: accountService.getActiveSession(),
+  session: null,
   students: [],
   schedules: [],
-  isLoadingData: Boolean(accountService.getActiveSession()),
+  authReady: false,
+  isLoadingData: false,
   loadError: "",
+  loginMessage: "",
   ui: {
     activeTab: "progress",
     scheduleListTab: "all",
@@ -42,6 +51,33 @@ const state = {
 };
 
 let pendingSearchRefocus = false;
+let currentLoadId = 0;
+
+function getPermissions() {
+  return state.session?.permissions ?? defaultPermissions;
+}
+
+function hasPermission(permissionKey) {
+  return Boolean(getPermissions()[permissionKey]);
+}
+
+function resetUiState() {
+  state.ui = {
+    ...state.ui,
+    editingStudentId: null,
+    detailStudentId: null,
+    formMode: null,
+    scheduleFormOpen: false,
+    scheduleStudentId: null,
+  };
+}
+
+function clearDataState() {
+  state.students = [];
+  state.schedules = [];
+  state.isLoadingData = false;
+  state.loadError = "";
+}
 
 async function syncStudents() {
   state.students = await studentService.getAllStudents();
@@ -53,13 +89,11 @@ async function syncSchedules() {
 
 async function loadDashboardData() {
   if (!state.session) {
-    state.students = [];
-    state.schedules = [];
-    state.isLoadingData = false;
-    state.loadError = "";
+    clearDataState();
     return;
   }
 
+  const loadId = ++currentLoadId;
   state.isLoadingData = true;
   state.loadError = "";
   render();
@@ -69,14 +103,25 @@ async function loadDashboardData() {
       studentService.getAllStudents(),
       scheduleService.getAllSchedules(),
     ]);
+
+    if (loadId !== currentLoadId) {
+      return;
+    }
+
     state.students = students;
     state.schedules = schedules;
   } catch (error) {
+    if (loadId !== currentLoadId) {
+      return;
+    }
+
     console.error("Không thể tải dữ liệu Firebase.", error);
-    state.loadError = "Không thể tải dữ liệu từ Firebase. Kiểm tra cấu hình dự án và Firestore rules.";
+    state.loadError = "Không thể tải dữ liệu từ Firebase. Kiểm tra Firestore rules và dữ liệu users/{uid}.";
   } finally {
-    state.isLoadingData = false;
-    render();
+    if (loadId === currentLoadId) {
+      state.isLoadingData = false;
+      render();
+    }
   }
 }
 
@@ -105,10 +150,18 @@ function refocusSearchIfNeeded() {
 }
 
 function openCreateForm() {
+  if (!hasPermission("canCreateStudent")) {
+    return;
+  }
+
   updateUi({ editingStudentId: null, formMode: "create", activeTab: "students", showStudentFilters: false });
 }
 
 function openEditForm(studentId) {
+  if (!hasPermission("canEditStudent")) {
+    return;
+  }
+
   updateUi({ editingStudentId: studentId, formMode: "edit", activeTab: "students", showStudentFilters: false });
 }
 
@@ -125,6 +178,10 @@ function closeDetail() {
 }
 
 function openScheduleForm(studentId, date = state.ui.selectedScheduleDate) {
+  if (!hasPermission("canCreateSchedule")) {
+    return;
+  }
+
   updateUi({
     scheduleStudentId: studentId,
     selectedScheduleDate: date,
@@ -134,6 +191,10 @@ function openScheduleForm(studentId, date = state.ui.selectedScheduleDate) {
 }
 
 function openScheduleDayForm(date = state.ui.selectedScheduleDate) {
+  if (!hasPermission("canCreateSchedule")) {
+    return;
+  }
+
   updateUi({
     scheduleStudentId: null,
     selectedScheduleDate: date,
@@ -147,30 +208,35 @@ function closeScheduleForm() {
 }
 
 async function handleLogin(credentials) {
-  const result = loginService.login(credentials);
+  state.loginMessage = "";
+  const result = await firebaseAuthService.login(credentials);
   if (!result.success) {
-    return result;
+    state.loginMessage = result.message;
   }
-
-  state.session = result.session;
-  await loadDashboardData();
   return result;
 }
 
-function handleLogout() {
-  loginService.logout();
-  state.session = null;
-  state.students = [];
-  state.schedules = [];
-  state.loadError = "";
-  state.isLoadingData = false;
-  render();
+async function handleLogout() {
+  try {
+    await firebaseAuthService.logout();
+  } catch (error) {
+    console.error("Không thể đăng xuất.", error);
+  }
 }
 
 async function handleSaveStudent(formData) {
+  const isEditing = state.ui.formMode === "edit" && state.ui.editingStudentId;
+  if (isEditing && !hasPermission("canEditStudent")) {
+    return { success: false, message: "Bạn không có quyền cập nhật học viên." };
+  }
+
+  if (!isEditing && !hasPermission("canCreateStudent")) {
+    return { success: false, message: "Bạn không có quyền tạo học viên." };
+  }
+
   try {
     const result =
-      state.ui.formMode === "edit" && state.ui.editingStudentId
+      isEditing
         ? await studentService.updateStudent(state.ui.editingStudentId, formData)
         : await studentService.createStudent(formData);
 
@@ -192,6 +258,11 @@ async function handleSaveStudent(formData) {
 }
 
 async function handleDeleteStudent(studentId) {
+  if (!hasPermission("canDeleteStudent")) {
+    window.alert("Bạn không có quyền xóa học viên.");
+    return;
+  }
+
   const confirmed = window.confirm("Xóa học sinh này khỏi danh sách?");
   if (!confirmed) {
     return;
@@ -220,6 +291,11 @@ async function handleDeleteStudent(studentId) {
 }
 
 async function handleDeleteSchedule(scheduleId) {
+  if (!hasPermission("canDeleteSchedule")) {
+    window.alert("Bạn không có quyền xóa lịch học.");
+    return;
+  }
+
   try {
     await scheduleService.deleteSchedule(scheduleId);
     await syncSchedules();
@@ -294,6 +370,10 @@ function handleOpenStudentTab() {
 }
 
 async function handleSaveSchedule(payload) {
+  if (!hasPermission("canCreateSchedule")) {
+    return { success: false, message: "Bạn không có quyền tạo lịch học." };
+  }
+
   try {
     const student = state.students.find((item) => item.id === payload.studentId);
     const result = await scheduleService.createSchedule(payload, student);
@@ -329,14 +409,14 @@ function getActiveFilterLabel(activeStatFilter) {
   return labels[activeStatFilter] ?? "Toàn bộ học viên";
 }
 
-function renderLoadingState() {
+function renderLoadingState(title, message) {
   appElement.innerHTML = `
     <main class="login-screen">
       <section class="login-panel">
         <div class="panel">
           <p class="eyebrow">Firebase</p>
-          <h2>Đang tải dữ liệu...</h2>
-          <p class="hero-copy">Ứng dụng đang đồng bộ danh sách học viên và lịch học từ Firestore.</p>
+          <h2>${title}</h2>
+          <p class="hero-copy">${message}</p>
         </div>
       </section>
     </main>
@@ -358,16 +438,19 @@ function renderErrorState() {
 }
 
 function render() {
-  state.session = accountService.getActiveSession();
+  if (!state.authReady) {
+    renderLoadingState("Đang kiểm tra phiên đăng nhập...", "Ứng dụng đang đồng bộ trạng thái Firebase Authentication.");
+    return;
+  }
 
   if (!state.session) {
     appElement.innerHTML = "";
-    LoginScreen(appElement, { onLogin: handleLogin });
+    LoginScreen(appElement, { onLogin: handleLogin, message: state.loginMessage });
     return;
   }
 
   if (state.isLoadingData) {
-    renderLoadingState();
+    renderLoadingState("Đang tải dữ liệu...", "Ứng dụng đang đồng bộ danh sách học viên và lịch học từ Firestore.");
     return;
   }
 
@@ -399,6 +482,7 @@ function render() {
   appElement.innerHTML = "";
   DashboardScreen(appElement, {
     session: state.session,
+    permissions: getPermissions(),
     students: filteredStudents,
     totalStudents: state.students.length,
     statistics,
@@ -436,8 +520,32 @@ function render() {
   refocusSearchIfNeeded();
 }
 
-render();
+firebaseAuthService.subscribe(async ({ session, error }) => {
+  currentLoadId += 1;
 
-if (state.session) {
-  loadDashboardData();
-}
+  if (error) {
+    console.error("Không thể đồng bộ Firebase Authentication.", error);
+    state.session = null;
+    state.authReady = true;
+    state.loginMessage = "Không thể xác thực với Firebase hoặc đọc users/{uid}.";
+    clearDataState();
+    resetUiState();
+    render();
+    return;
+  }
+
+  state.session = session;
+  state.authReady = true;
+  state.loginMessage = "";
+  resetUiState();
+
+  if (!session) {
+    clearDataState();
+    render();
+    return;
+  }
+
+  await loadDashboardData();
+});
+
+render();

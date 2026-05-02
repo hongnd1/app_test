@@ -1,4 +1,4 @@
-﻿export function LoginScreen(root, { onLogin }) {
+export function LoginScreen(root, { onLogin, message = "" }) {
   const container = document.createElement("main");
   container.className = "login-screen";
 
@@ -15,14 +15,14 @@
         <p class="eyebrow">Đăng nhập hệ thống</p>
         <h2>Chào mừng quay lại</h2>
         <label class="field">
-          <span>Tên đăng nhập</span>
-          <input type="text" name="username" placeholder="Nhập tên đăng nhập" required />
+          <span>Email</span>
+          <input type="email" name="email" placeholder="Nhập email đăng nhập" required />
         </label>
         <label class="field">
           <span>Mật khẩu</span>
           <input type="password" name="password" placeholder="Nhập mật khẩu" required />
         </label>
-        <p class="form-message" hidden></p>
+        <p class="form-message" ${message ? "" : "hidden"}>${message}</p>
         <button type="submit" class="primary-button">Đăng nhập</button>
       </form>
     </section>
@@ -37,7 +37,7 @@
     submitButton.disabled = true;
     try {
       const result = await onLogin({
-        username: form.username.value,
+        email: form.email.value,
         password: form.password.value,
       });
 

@@ -1,4 +1,4 @@
-﻿import { createFilterBar } from "../components/FilterBar.js";
+import { createFilterBar } from "../components/FilterBar.js";
 import { createStudentCard } from "../components/StudentCard.js";
 import { createStudentDetail } from "../components/StudentDetail.js";
 import { createStudentForm } from "../components/StudentForm.js";
@@ -68,7 +68,7 @@ function createProgressBar(item, onClick) {
   return button;
 }
 
-function createScheduleCard(schedule, actions) {
+function createScheduleCard(schedule, actions, permissions) {
   const card = document.createElement("article");
   card.className = "schedule-card";
   card.innerHTML = `
@@ -78,15 +78,19 @@ function createScheduleCard(schedule, actions) {
         <h3>${schedule.studentName}</h3>
         <p class="muted">${schedule.licenseType} · ${schedule.date}</p>
       </div>
-      <button class="ghost-danger-button compact-button" type="button">Xóa</button>
+      ${permissions.canDeleteSchedule ? '<button class="ghost-danger-button compact-button" type="button">Xóa</button>' : ""}
     </div>
     <p class="schedule-note">${schedule.note || "Chưa có ghi chú"}</p>
   `;
-  card.querySelector("button").addEventListener("click", () => actions.onDelete(schedule.id));
+
+  if (permissions.canDeleteSchedule) {
+    card.querySelector("button").addEventListener("click", () => actions.onDelete(schedule.id));
+  }
+
   return card;
 }
 
-function renderScheduleList(title, schedules, actions, subtitle = "") {
+function renderScheduleList(title, schedules, actions, permissions, subtitle = "") {
   const section = document.createElement("section");
   section.className = "schedule-block";
   section.innerHTML = `
@@ -107,7 +111,7 @@ function renderScheduleList(title, schedules, actions, subtitle = "") {
     empty.innerHTML = `<p>Chưa có lịch trong mục này.</p>`;
     list.appendChild(empty);
   } else {
-    schedules.forEach((schedule) => list.appendChild(createScheduleCard(schedule, actions)));
+    schedules.forEach((schedule) => list.appendChild(createScheduleCard(schedule, actions, permissions)));
   }
 
   section.appendChild(list);
@@ -304,12 +308,14 @@ function renderScheduleTab(container, props) {
       "Hôm nay",
       props.scheduleBuckets.today,
       { onDelete: props.onDeleteSchedule },
+      props.permissions,
       fullDateLabel(props.scheduleBuckets.todayDate),
     ),
     renderScheduleList(
       "Ngày mai",
       props.scheduleBuckets.tomorrow,
       { onDelete: props.onDeleteSchedule },
+      props.permissions,
       fullDateLabel(props.scheduleBuckets.tomorrowDate),
     ),
   );
@@ -320,16 +326,21 @@ function renderScheduleTab(container, props) {
     `Lịch ngày ${props.filters.selectedScheduleDate}`,
     props.scheduleBuckets.selectedDay,
     { onDelete: props.onDeleteSchedule },
+    props.permissions,
   );
-  const addButton = document.createElement("button");
-  addButton.type = "button";
-  addButton.className = "primary-button compact-button schedule-add-button";
-  addButton.textContent = "Thêm lịch học";
-  addButton.addEventListener("click", () => props.onOpenScheduleDayForm(props.filters.selectedScheduleDate));
-  selectedSection.querySelector(".section-heading").appendChild(addButton);
+
+  if (props.permissions.canCreateSchedule) {
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "primary-button compact-button schedule-add-button";
+    addButton.textContent = "Thêm lịch học";
+    addButton.addEventListener("click", () => props.onOpenScheduleDayForm(props.filters.selectedScheduleDate));
+    selectedSection.querySelector(".section-heading").appendChild(addButton);
+  }
+
   section.appendChild(selectedSection);
 
-  if (props.filters.scheduleFormOpen) {
+  if (props.filters.scheduleFormOpen && props.permissions.canCreateSchedule) {
     const modal = document.createElement("div");
     modal.className = "modal-shell";
     modal.appendChild(
@@ -358,11 +369,15 @@ function renderStudentsTab(container, props) {
         <button class="secondary-button" type="button" data-action="toggle-filter">
           ${props.filters.showStudentFilters ? "Ẩn tìm kiếm" : "Tìm kiếm học viên"}
         </button>
-        <button class="primary-button" type="button" data-action="create-student">Thêm học sinh</button>
+        ${props.permissions.canCreateStudent ? '<button class="primary-button" type="button" data-action="create-student">Thêm học sinh</button>' : ""}
       </div>
     </div>
   `;
-  section.querySelector('[data-action="create-student"]').addEventListener("click", props.onOpenCreateForm);
+
+  const createButton = section.querySelector('[data-action="create-student"]');
+  if (createButton) {
+    createButton.addEventListener("click", props.onOpenCreateForm);
+  }
   section.querySelector('[data-action="toggle-filter"]').addEventListener("click", props.onToggleStudentFilters);
 
   if (props.filters.showStudentFilters) {
@@ -395,7 +410,7 @@ function renderStudentsTab(container, props) {
             onDelete: props.onDeleteStudent,
             onSchedule: (studentId) => props.onOpenScheduleForm(studentId, props.filters.selectedScheduleDate),
           },
-          { compact: true },
+          { compact: true, permissions: props.permissions },
         ),
       );
     });
@@ -403,7 +418,10 @@ function renderStudentsTab(container, props) {
 
   section.appendChild(list);
 
-  if (props.filters.formMode === "create" || props.editingStudent) {
+  if (
+    (props.filters.formMode === "create" && props.permissions.canCreateStudent) ||
+    (props.editingStudent && props.permissions.canEditStudent)
+  ) {
     const modal = document.createElement("div");
     modal.className = "modal-shell";
     modal.appendChild(
@@ -419,21 +437,25 @@ function renderStudentsTab(container, props) {
     const modal = document.createElement("div");
     modal.className = "modal-shell";
     modal.appendChild(
-      createStudentDetail(props.detailStudent, {
-        onClose: props.onCloseDetail,
-        onDelete: (studentId) => {
-          props.onCloseDetail();
-          props.onDeleteStudent(studentId);
+      createStudentDetail(
+        props.detailStudent,
+        {
+          onClose: props.onCloseDetail,
+          onDelete: (studentId) => {
+            props.onCloseDetail();
+            props.onDeleteStudent(studentId);
+          },
+          onEdit: (studentId) => {
+            props.onCloseDetail();
+            props.onOpenEditForm(studentId);
+          },
+          onSchedule: (studentId) => {
+            props.onCloseDetail();
+            props.onOpenScheduleForm(studentId, props.filters.selectedScheduleDate);
+          },
         },
-        onEdit: (studentId) => {
-          props.onCloseDetail();
-          props.onOpenEditForm(studentId);
-        },
-        onSchedule: (studentId) => {
-          props.onCloseDetail();
-          props.onOpenScheduleForm(studentId, props.filters.selectedScheduleDate);
-        },
-      }),
+        props.permissions,
+      ),
     );
     section.appendChild(modal);
   }
@@ -445,18 +467,13 @@ export function DashboardScreen(root, props) {
   const container = document.createElement("main");
   container.className = "dashboard-screen tabbed-dashboard bottom-nav-layout";
 
-  const remainingInfo =
-    props.session.accountType === "trial"
-      ? `Còn ${props.session.remainingDays} ngày`
-      : "Vĩnh viễn";
-
   container.innerHTML = `
     <header class="topbar compact-topbar">
       <div>
         <p class="eyebrow">BLX Student Manager</p>
         <p class="topbar__copyright">Bản quyền được thiết kế bởi Nguyễn Đình Hồng</p>
         <h1>Quản lý đào tạo</h1>
-        <span class="topbar__meta">Xin chào ${props.session.displayName} · ${remainingInfo}</span>
+        <span class="topbar__meta">Xin chào ${props.session.displayName} · ${props.session.roleLabel}</span>
       </div>
       <button class="logout-button" type="button" aria-label="Đăng xuất">Đăng xuất</button>
     </header>

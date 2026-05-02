@@ -1,4 +1,4 @@
-﻿import { paymentService } from "../../logic/payment/paymentService.js";
+import { paymentService } from "../../logic/payment/paymentService.js";
 import { progressService } from "../../logic/progress/progressService.js";
 
 function formatCurrency(value) {
@@ -8,9 +8,26 @@ function formatCurrency(value) {
   }).format(value);
 }
 
-export function createStudentDetail(student, handlers) {
+export function createStudentDetail(student, handlers, permissions = {}) {
   const paymentStatus = paymentService.getPaymentStatus(student);
   const datStatus = progressService.getDatStatus(student);
+  const canSchedule = student.daHocLyThuyet && permissions.canCreateSchedule;
+
+  const actions = [
+    '<button type="button" class="secondary-button">Đóng</button>',
+  ];
+
+  if (permissions.canEditStudent) {
+    actions.push('<button type="button" class="secondary-button detail-edit-button">Sửa thông tin</button>');
+  }
+
+  if (permissions.canDeleteStudent) {
+    actions.push('<button type="button" class="ghost-danger-button detail-delete-button">Xóa</button>');
+  }
+
+  if (canSchedule) {
+    actions.push('<button type="button" class="primary-button detail-schedule-button">Đặt lịch DAT</button>');
+  }
 
   const wrapper = document.createElement("section");
   wrapper.className = "panel";
@@ -60,17 +77,22 @@ export function createStudentDetail(student, handlers) {
       <p><strong>Giai đoạn:</strong> ${progressService.getStageSummary(student)}</p>
     </div>
     <div class="form-actions">
-      <button type="button" class="secondary-button">Đóng</button>
-      <button type="button" class="secondary-button detail-edit-button">Sửa thông tin</button>
-      <button type="button" class="ghost-danger-button detail-delete-button">Xóa</button>
-      ${student.daHocLyThuyet ? '<button type="button" class="primary-button detail-schedule-button">Đặt lịch DAT</button>' : ""}
+      ${actions.join("")}
     </div>
   `;
 
   wrapper.querySelector(".icon-button").addEventListener("click", handlers.onClose);
   wrapper.querySelector(".secondary-button").addEventListener("click", handlers.onClose);
-  wrapper.querySelector(".detail-edit-button").addEventListener("click", () => handlers.onEdit(student.id));
-  wrapper.querySelector(".detail-delete-button").addEventListener("click", () => handlers.onDelete(student.id));
+
+  const editButton = wrapper.querySelector(".detail-edit-button");
+  if (editButton) {
+    editButton.addEventListener("click", () => handlers.onEdit(student.id));
+  }
+
+  const deleteButton = wrapper.querySelector(".detail-delete-button");
+  if (deleteButton) {
+    deleteButton.addEventListener("click", () => handlers.onDelete(student.id));
+  }
 
   const scheduleButton = wrapper.querySelector(".detail-schedule-button");
   if (scheduleButton) {

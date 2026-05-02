@@ -1,4 +1,4 @@
-﻿import { paymentService } from "../../logic/payment/paymentService.js";
+import { paymentService } from "../../logic/payment/paymentService.js";
 import { progressService } from "../../logic/progress/progressService.js";
 import { createStatusTag } from "./StatusTag.js";
 
@@ -11,6 +11,7 @@ function formatCurrency(value) {
 
 export function createStudentCard(student, actions, options = {}) {
   const compact = options.compact ?? false;
+  const permissions = options.permissions ?? {};
   const card = document.createElement("article");
   card.className = `student-card ${compact ? "student-card--compact" : ""}`;
 
@@ -78,7 +79,7 @@ export function createStudentCard(student, actions, options = {}) {
   const footer = document.createElement("div");
   footer.className = "student-card__footer";
 
-  if (student.daHocLyThuyet) {
+  if (student.daHocLyThuyet && permissions.canCreateSchedule) {
     const scheduleButton = document.createElement("button");
     scheduleButton.className = "primary-button compact-button";
     scheduleButton.textContent = "Đặt lịch DAT";
@@ -90,18 +91,24 @@ export function createStudentCard(student, actions, options = {}) {
   detailButton.className = "secondary-button compact-button";
   detailButton.textContent = "Chi tiết";
   detailButton.addEventListener("click", () => actions.onOpenDetail(student.id));
+  footer.appendChild(detailButton);
 
-  const editButton = document.createElement("button");
-  editButton.className = "secondary-button compact-button";
-  editButton.textContent = "Sửa";
-  editButton.addEventListener("click", () => actions.onEdit(student.id));
+  if (permissions.canEditStudent) {
+    const editButton = document.createElement("button");
+    editButton.className = "secondary-button compact-button";
+    editButton.textContent = "Sửa";
+    editButton.addEventListener("click", () => actions.onEdit(student.id));
+    footer.appendChild(editButton);
+  }
 
-  const deleteButton = document.createElement("button");
-  deleteButton.className = "ghost-danger-button compact-button";
-  deleteButton.textContent = "Xóa";
-  deleteButton.addEventListener("click", () => actions.onDelete(student.id));
+  if (permissions.canDeleteStudent) {
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "ghost-danger-button compact-button";
+    deleteButton.textContent = "Xóa";
+    deleteButton.addEventListener("click", () => actions.onDelete(student.id));
+    footer.appendChild(deleteButton);
+  }
 
-  footer.append(detailButton, editButton, deleteButton);
   card.append(header, body, statusGroup, footer);
 
   return card;
