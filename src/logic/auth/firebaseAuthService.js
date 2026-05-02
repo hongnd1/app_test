@@ -138,11 +138,20 @@ export function toAuthMessage(error) {
       "Email này đã tồn tại với phương thức đăng nhập khác.",
     "auth/too-many-requests": "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau.",
     "auth/network-request-failed": "Không thể kết nối đến Firebase. Kiểm tra mạng và cấu hình hosting.",
+    "permission-denied":
+      "Tài khoản Google đã xác thực nhưng không đọc được hồ sơ quyền trong Firestore. Kiểm tra lại rules của users/{uid}.",
     "profile/missing":
       "Tài khoản của bạn chưa được cấp quyền đăng nhập. Vui lòng liên hệ thầy giáo hoặc admin để được cấp quyền truy cập.",
   };
 
-  return messages[error?.code] ?? "Không thể đăng nhập bằng Firebase Authentication.";
+  if (messages[error?.code]) {
+    return messages[error.code];
+  }
+
+  const detail = [error?.code, error?.message].filter(Boolean).join(" - ");
+  return detail
+    ? `Không thể đăng nhập bằng Firebase Authentication. Chi tiết: ${detail}`
+    : "Không thể đăng nhập bằng Firebase Authentication.";
 }
 
 async function verifyAuthorizedProfile(user) {
