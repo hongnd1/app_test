@@ -1,7 +1,9 @@
 import { firebaseAuthService } from "../logic/auth/firebaseAuthService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
+import { notificationService } from "../logic/notification/notificationService.js";
 import { progressService } from "../logic/progress/progressService.js";
+import { scheduleReminderService } from "../logic/reminder/scheduleReminderService.js";
 import { scheduleService } from "../logic/schedule/scheduleService.js";
 import { studentService } from "../logic/student/studentService.js";
 import { DashboardScreen } from "../ui/screens/DashboardScreen.js";
@@ -14,9 +16,12 @@ const initialDate = today.toISOString().slice(0, 10);
 const defaultPermissions = {
   canCreateStudent: false,
   canEditStudent: false,
+  canEditStudentDat: false,
   canDeleteStudent: false,
+  canViewSensitiveStudentInfo: false,
   canCreateSchedule: false,
   canDeleteSchedule: false,
+  canAssignMeetingLocation: false,
 };
 
 const state = {
@@ -27,6 +32,8 @@ const state = {
   isLoadingData: false,
   loadError: "",
   loginMessage: "",
+  popupNotification: null,
+  notificationPermission: notificationService.getPermission(),
   ui: {
     activeTab: "progress",
     scheduleListTab: "all",
@@ -47,11 +54,17 @@ const state = {
     formMode: null,
     scheduleFormOpen: false,
     scheduleStudentId: null,
+    meetingScheduleId: null,
   },
 };
 
 let pendingSearchRefocus = false;
 let currentLoadId = 0;
+let stopReminderScheduler = null;
+
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function getPermissions() {
   return state.session?.permissions ?? defaultPermissions;
@@ -69,6 +82,7 @@ function resetUiState() {
     formMode: null,
     scheduleFormOpen: false,
     scheduleStudentId: null,
+    meetingScheduleId: null,
   };
 }
 
@@ -77,6 +91,39 @@ function clearDataState() {
   state.schedules = [];
   state.isLoadingData = false;
   state.loadError = "";
+  state.popupNotification = null;
+}
+
+function stopReminderLoop() {
+  if (stopReminderScheduler) {
+    stopReminderScheduler();
+    stopReminderScheduler = null;
+  }
+}
+
+function maybeTriggerScheduleReminder(now = new Date()) {
+  if (!hasPermission("canAssignMeetingLocation")) {
+    return;
+  }
+
+  const notification = scheduleReminderService.maybeCreateDueNotification(state.schedules, now);
+  if (!notification) {
+    return;
+  }
+
+  notificationService.notify(notification);
+}
+
+function syncReminderScheduler() {
+  stopReminderLoop();
+
+  if (!state.session || !hasPermission("canAssignMeetingLocation")) {
+    return;
+  }
+
+  stopReminderScheduler = scheduleReminderService.startScheduler((now) => {
+    maybeTriggerScheduleReminder(now);
+  });
 }
 
 async function syncStudents() {
@@ -158,7 +205,7 @@ function openCreateForm() {
 }
 
 function openEditForm(studentId) {
-  if (!hasPermission("canEditStudent")) {
+  if (!(hasPermission("canEditStudent") || hasPermission("canEditStudentDat"))) {
     return;
   }
 
@@ -186,6 +233,7 @@ function openScheduleForm(studentId, date = state.ui.selectedScheduleDate) {
     scheduleStudentId: studentId,
     selectedScheduleDate: date,
     scheduleFormOpen: true,
+    meetingScheduleId: null,
     activeTab: "schedule",
   });
 }
@@ -199,12 +247,29 @@ function openScheduleDayForm(date = state.ui.selectedScheduleDate) {
     scheduleStudentId: null,
     selectedScheduleDate: date,
     scheduleFormOpen: true,
+    meetingScheduleId: null,
     activeTab: "schedule",
   });
 }
 
 function closeScheduleForm() {
   updateUi({ scheduleStudentId: null, scheduleFormOpen: false });
+}
+
+function openMeetingLocationForm(scheduleId) {
+  if (!hasPermission("canAssignMeetingLocation")) {
+    return;
+  }
+
+  updateUi({
+    meetingScheduleId: scheduleId,
+    scheduleFormOpen: false,
+    activeTab: "schedule",
+  });
+}
+
+function closeMeetingLocationForm() {
+  updateUi({ meetingScheduleId: null });
 }
 
 async function handleLogin(credentials) {
@@ -224,9 +289,25 @@ async function handleLogout() {
   }
 }
 
+function handleOpenScheduleTab() {
+  updateUi({ activeTab: "schedule" });
+}
+
+async function handleRequestNotificationPermission() {
+  const permission = await notificationService.requestPermission();
+  state.notificationPermission = permission;
+  render();
+}
+
+function handleDismissPopupNotification() {
+  state.popupNotification = null;
+  render();
+}
+
 async function handleSaveStudent(formData) {
   const isEditing = state.ui.formMode === "edit" && state.ui.editingStudentId;
-  if (isEditing && !hasPermission("canEditStudent")) {
+
+  if (isEditing && !(hasPermission("canEditStudent") || hasPermission("canEditStudentDat"))) {
     return { success: false, message: "Bạn không có quyền cập nhật học viên." };
   }
 
@@ -235,10 +316,14 @@ async function handleSaveStudent(formData) {
   }
 
   try {
-    const result =
-      isEditing
-        ? await studentService.updateStudent(state.ui.editingStudentId, formData)
-        : await studentService.createStudent(formData);
+    const payload =
+      isEditing && hasPermission("canEditStudentDat") && !hasPermission("canEditStudent")
+        ? { soKmDAT: Number(formData.soKmDAT) }
+        : formData;
+
+    const result = isEditing
+      ? await studentService.updateStudent(state.ui.editingStudentId, payload)
+      : await studentService.createStudent(payload);
 
     if (result.success) {
       await syncStudents();
@@ -396,6 +481,29 @@ async function handleSaveSchedule(payload) {
   }
 }
 
+async function handleSaveMeetingLocation(payload) {
+  if (!hasPermission("canAssignMeetingLocation")) {
+    return { success: false, message: "Bạn không có quyền cập nhật địa điểm hẹn." };
+  }
+
+  try {
+    const result = await scheduleService.updateMeetingLocation(state.ui.meetingScheduleId, payload);
+
+    if (result.success) {
+      await syncSchedules();
+      updateUi({
+        meetingScheduleId: null,
+        activeTab: "schedule",
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Không thể cập nhật địa điểm hẹn.", error);
+    return { success: false, message: "Không thể lưu địa điểm hẹn lên Firebase." };
+  }
+}
+
 function getActiveFilterLabel(activeStatFilter) {
   const labels = {
     all: "Toàn bộ học viên",
@@ -470,9 +578,13 @@ function render() {
   const scheduleStudent = state.ui.scheduleStudentId
     ? state.students.find((student) => student.id === state.ui.scheduleStudentId) ?? null
     : null;
+  const meetingSchedule = state.ui.meetingScheduleId
+    ? scheduleService.getScheduleById(state.schedules, state.ui.meetingScheduleId)
+    : null;
   const scheduleCandidates = state.students.filter((student) => student.daHocLyThuyet);
   const statistics = progressService.getDashboardStatistics(state.students);
   const progressOverview = progressService.getProgressOverview(state.students);
+  const reminderSummary = scheduleReminderService.getReminderSummary(state.schedules, getTodayString());
   const scheduleBuckets = scheduleService.getScheduleBuckets(state.schedules, {
     month: state.ui.scheduleMonth,
     year: state.ui.scheduleYear,
@@ -487,12 +599,14 @@ function render() {
     totalStudents: state.students.length,
     statistics,
     progressOverview,
+    reminderSummary,
     activeFilterLabel: getActiveFilterLabel(state.ui.activeStatFilter),
     filters: state.ui,
     scheduleBuckets,
     editingStudent,
     detailStudent,
     scheduleStudent,
+    meetingSchedule,
     scheduleCandidates,
     onLogout: handleLogout,
     onChangeTab: (activeTab) => updateUi({ activeTab }),
@@ -510,11 +624,20 @@ function render() {
     onStatFilter: handleStatFilter,
     onToggleStudentFilters: () => updateUi({ showStudentFilters: !state.ui.showStudentFilters }),
     onOpenStudentTab: handleOpenStudentTab,
+    onOpenScheduleTab: handleOpenScheduleTab,
     onOpenScheduleForm: openScheduleForm,
     onOpenScheduleDayForm: openScheduleDayForm,
     onCloseScheduleForm: closeScheduleForm,
     onSaveSchedule: handleSaveSchedule,
     onDeleteSchedule: handleDeleteSchedule,
+    onOpenMeetingLocationForm: openMeetingLocationForm,
+    onCloseMeetingLocationForm: closeMeetingLocationForm,
+    onSaveMeetingLocation: handleSaveMeetingLocation,
+    supportsBrowserNotifications: notificationService.isBrowserNotificationSupported(),
+    notificationPermission: state.notificationPermission,
+    onRequestNotificationPermission: handleRequestNotificationPermission,
+    popupNotification: state.popupNotification,
+    onDismissPopupNotification: handleDismissPopupNotification,
   });
 
   refocusSearchIfNeeded();
@@ -522,6 +645,7 @@ function render() {
 
 firebaseAuthService.subscribe(async ({ session, error }) => {
   currentLoadId += 1;
+  stopReminderLoop();
 
   if (error) {
     console.error("Không thể đồng bộ Firebase Authentication.", error);
@@ -537,6 +661,7 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   state.session = session;
   state.authReady = true;
   state.loginMessage = "";
+  state.notificationPermission = notificationService.getPermission();
   resetUiState();
 
   if (!session) {
@@ -546,6 +671,13 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   }
 
   await loadDashboardData();
+  syncReminderScheduler();
+  maybeTriggerScheduleReminder(new Date());
+});
+
+notificationService.subscribe((notification) => {
+  state.popupNotification = notification;
+  render();
 });
 
 render();

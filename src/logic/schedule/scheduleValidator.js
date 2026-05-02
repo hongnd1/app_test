@@ -1,4 +1,6 @@
-﻿export const scheduleValidator = {
+import { getScheduleSlot } from "./scheduleSlots.js";
+
+export const scheduleValidator = {
   validate(schedule, student, schedules = []) {
     if (!student) {
       return { valid: false, message: "Không tìm thấy học viên để đặt lịch." };
@@ -12,16 +14,13 @@
       return { valid: false, message: "Vui lòng chọn ngày học DAT." };
     }
 
-    if (!schedule.startTime || !schedule.endTime) {
-      return { valid: false, message: "Vui lòng chọn đầy đủ giờ bắt đầu và giờ kết thúc." };
+    const slot = getScheduleSlot(schedule.slotKey);
+    if (!slot) {
+      return { valid: false, message: "Vui lòng chọn ca học hợp lệ." };
     }
 
-    if (schedule.startTime < "06:00" || schedule.endTime > "21:00") {
-      return { valid: false, message: "Lịch học DAT chỉ được đặt trong khoảng 06:00 đến 21:00." };
-    }
-
-    if (schedule.endTime <= schedule.startTime) {
-      return { valid: false, message: "Giờ kết thúc phải lớn hơn giờ bắt đầu." };
+    if (schedule.startTime !== slot.startTime || schedule.endTime !== slot.endTime) {
+      return { valid: false, message: `Ca ${slot.label.toLowerCase()} phải đúng khung giờ ${slot.startTime} - ${slot.endTime}.` };
     }
 
     const overlapped = schedules.some((item) => {
@@ -35,7 +34,7 @@
     });
 
     if (overlapped) {
-      return { valid: false, message: "Khoảng giờ này đã trùng với một lịch học khác. Vui lòng chọn giờ khác." };
+      return { valid: false, message: "Ca học này đã trùng với một lịch khác. Vui lòng chọn ca khác." };
     }
 
     return { valid: true };

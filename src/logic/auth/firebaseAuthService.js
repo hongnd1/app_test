@@ -11,47 +11,29 @@ import { authValidator } from "./authValidator.js";
 
 const ROLE_LABELS = {
   admin: "Quản trị viên",
-  editor: "Biên tập viên",
   staff: "Nhân sự",
-  scheduler: "Điều phối lịch",
-  viewer: "Chỉ xem",
 };
 
 const ROLE_PERMISSIONS = {
   admin: {
     canCreateStudent: true,
     canEditStudent: true,
+    canEditStudentDat: true,
     canDeleteStudent: true,
+    canViewSensitiveStudentInfo: true,
     canCreateSchedule: true,
     canDeleteSchedule: true,
-  },
-  editor: {
-    canCreateStudent: true,
-    canEditStudent: true,
-    canDeleteStudent: false,
-    canCreateSchedule: true,
-    canDeleteSchedule: true,
+    canAssignMeetingLocation: true,
   },
   staff: {
-    canCreateStudent: true,
-    canEditStudent: true,
-    canDeleteStudent: false,
-    canCreateSchedule: true,
-    canDeleteSchedule: false,
-  },
-  scheduler: {
     canCreateStudent: false,
     canEditStudent: false,
+    canEditStudentDat: true,
     canDeleteStudent: false,
+    canViewSensitiveStudentInfo: false,
     canCreateSchedule: true,
-    canDeleteSchedule: true,
-  },
-  viewer: {
-    canCreateStudent: false,
-    canEditStudent: false,
-    canDeleteStudent: false,
-    canCreateSchedule: false,
     canDeleteSchedule: false,
+    canAssignMeetingLocation: false,
   },
 };
 
@@ -67,7 +49,7 @@ function ensurePersistence() {
 
 function normalizeRole(role) {
   const normalized = String(role ?? "").trim().toLowerCase();
-  return ROLE_PERMISSIONS[normalized] ? normalized : "viewer";
+  return ROLE_PERMISSIONS[normalized] ? normalized : "staff";
 }
 
 function getPermissions(role) {
@@ -75,7 +57,7 @@ function getPermissions(role) {
 }
 
 function getRoleLabel(role) {
-  return ROLE_LABELS[normalizeRole(role)] ?? ROLE_LABELS.viewer;
+  return ROLE_LABELS[normalizeRole(role)] ?? ROLE_LABELS.staff;
 }
 
 async function getUserProfile(uid) {

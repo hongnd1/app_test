@@ -1,8 +1,71 @@
-﻿function toChecked(value) {
+function toChecked(value) {
   return value ? "checked" : "";
 }
 
-export function createStudentForm(student, mode, handlers) {
+function buildAdminFields(student) {
+  return `
+    <label class="field">
+      <span>Tên học sinh</span>
+      <input type="text" name="ten" value="${student?.ten ?? ""}" required />
+    </label>
+    <label class="field">
+      <span>Số điện thoại</span>
+      <input type="text" name="sdt" maxlength="11" value="${student?.sdt ?? ""}" required />
+    </label>
+    <label class="field">
+      <span>Tên Zalo</span>
+      <input type="text" name="tenZalo" value="${student?.tenZalo ?? ""}" required />
+    </label>
+    <label class="field">
+      <span>Số CCCD</span>
+      <input type="text" name="cccd" maxlength="12" value="${student?.cccd ?? ""}" required />
+    </label>
+    <label class="field">
+      <span>Loại bằng</span>
+      <select name="loaiBang" required>
+        <option value="A1">A1</option>
+        <option value="A2">A2</option>
+        <option value="B tự động">B tự động</option>
+        <option value="B số sàn">B số sàn</option>
+        <option value="C1">C1</option>
+        <option value="D">D</option>
+        <option value="E">E</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Tổng học phí</span>
+      <input type="number" min="0" name="tongHocPhi" value="${student?.tongHocPhi ?? 0}" required />
+    </label>
+    <label class="field">
+      <span>Số tiền đã nộp</span>
+      <input type="number" min="0" name="daNop" value="${student?.daNop ?? 0}" required />
+    </label>
+    <label class="field">
+      <span>Số km DAT</span>
+      <input type="number" min="0" name="soKmDAT" value="${student?.soKmDAT ?? 0}" required />
+    </label>
+  `;
+}
+
+function buildStaffFields(student) {
+  return `
+    <label class="field">
+      <span>Tên học sinh</span>
+      <input type="text" name="ten" value="${student?.ten ?? ""}" readonly />
+    </label>
+    <label class="field">
+      <span>Loại bằng</span>
+      <input type="text" name="loaiBangDisplay" value="${student?.loaiBang ?? ""}" readonly />
+    </label>
+    <label class="field">
+      <span>Số km DAT</span>
+      <input type="number" min="0" name="soKmDAT" value="${student?.soKmDAT ?? 0}" required />
+    </label>
+  `;
+}
+
+export function createStudentForm(student, mode, handlers, permissions = {}) {
+  const isStaffDatOnly = permissions.canEditStudentDat && !permissions.canEditStudent;
   const wrapper = document.createElement("section");
   wrapper.className = "panel";
 
@@ -16,39 +79,12 @@ export function createStudentForm(student, mode, handlers) {
     </div>
     <form class="student-form">
       <div class="form-grid">
-        <label class="field">
-          <span>Tên học sinh</span>
-          <input type="text" name="ten" value="${student?.ten ?? ""}" required />
-        </label>
-        <label class="field">
-          <span>Số CCCD</span>
-          <input type="text" name="cccd" maxlength="12" value="${student?.cccd ?? ""}" required />
-        </label>
-        <label class="field">
-          <span>Loại bằng</span>
-          <select name="loaiBang" required>
-            <option value="A1">A1</option>
-            <option value="A2">A2</option>
-            <option value="B tự động">B tự động</option>
-            <option value="B số sàn">B số sàn</option>
-            <option value="C1">C1</option>
-            <option value="D">D</option>
-            <option value="E">E</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Tổng học phí</span>
-          <input type="number" min="0" name="tongHocPhi" value="${student?.tongHocPhi ?? 0}" required />
-        </label>
-        <label class="field">
-          <span>Số tiền đã nộp</span>
-          <input type="number" min="0" name="daNop" value="${student?.daNop ?? 0}" required />
-        </label>
-        <label class="field">
-          <span>Số km DAT</span>
-          <input type="number" min="0" name="soKmDAT" value="${student?.soKmDAT ?? 0}" required />
-        </label>
+        ${isStaffDatOnly ? buildStaffFields(student) : buildAdminFields(student)}
       </div>
+      ${
+        isStaffDatOnly
+          ? ""
+          : `
       <div class="toggle-grid">
         <label class="toggle-card">
           <input type="checkbox" name="daHocLyThuyet" ${toChecked(student?.daHocLyThuyet)} />
@@ -59,6 +95,8 @@ export function createStudentForm(student, mode, handlers) {
           <span>Đã học sa hình</span>
         </label>
       </div>
+      `
+      }
       <p class="form-message" hidden></p>
       <div class="form-actions">
         <button type="button" class="secondary-button">Hủy</button>
@@ -71,10 +109,12 @@ export function createStudentForm(student, mode, handlers) {
   const cancelButton = wrapper.querySelector(".secondary-button");
   const form = wrapper.querySelector("form");
   const messageElement = wrapper.querySelector(".form-message");
-  const licenseSelect = wrapper.querySelector('[name="loaiBang"]');
   const submitButton = wrapper.querySelector('button[type="submit"]');
+  const licenseSelect = wrapper.querySelector('[name="loaiBang"]');
 
-  licenseSelect.value = student?.loaiBang ?? "B tự động";
+  if (licenseSelect) {
+    licenseSelect.value = student?.loaiBang ?? "B tự động";
+  }
 
   closeButton.addEventListener("click", handlers.onClose);
   cancelButton.addEventListener("click", handlers.onClose);
@@ -84,16 +124,22 @@ export function createStudentForm(student, mode, handlers) {
     submitButton.disabled = true;
     try {
       const formData = new FormData(form);
-      const payload = {
-        ten: formData.get("ten"),
-        cccd: formData.get("cccd"),
-        loaiBang: formData.get("loaiBang"),
-        tongHocPhi: Number(formData.get("tongHocPhi")),
-        daNop: Number(formData.get("daNop")),
-        soKmDAT: Number(formData.get("soKmDAT")),
-        daHocLyThuyet: form.querySelector('[name="daHocLyThuyet"]').checked,
-        daHocSaHinh: form.querySelector('[name="daHocSaHinh"]').checked,
-      };
+      const payload = isStaffDatOnly
+        ? {
+            soKmDAT: Number(formData.get("soKmDAT")),
+          }
+        : {
+            ten: formData.get("ten"),
+            sdt: formData.get("sdt"),
+            tenZalo: formData.get("tenZalo"),
+            cccd: formData.get("cccd"),
+            loaiBang: formData.get("loaiBang"),
+            tongHocPhi: Number(formData.get("tongHocPhi")),
+            daNop: Number(formData.get("daNop")),
+            soKmDAT: Number(formData.get("soKmDAT")),
+            daHocLyThuyet: form.querySelector('[name="daHocLyThuyet"]').checked,
+            daHocSaHinh: form.querySelector('[name="daHocSaHinh"]').checked,
+          };
 
       const result = await handlers.onSave(payload);
       if (!result.success) {

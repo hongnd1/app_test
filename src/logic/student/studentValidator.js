@@ -4,6 +4,14 @@ export const studentValidator = {
       return { valid: false, message: "Tên học sinh không được để trống." };
     }
 
+    if (!/^\d{9,11}$/.test(student.sdt?.trim() ?? "")) {
+      return { valid: false, message: "Số điện thoại học viên phải gồm 9 đến 11 chữ số." };
+    }
+
+    if (!student.tenZalo?.trim()) {
+      return { valid: false, message: "Tên Zalo không được để trống." };
+    }
+
     if (!/^\d{12}$/.test(student.cccd?.trim() ?? "")) {
       return { valid: false, message: "CCCD phải gồm đúng 12 chữ số." };
     }

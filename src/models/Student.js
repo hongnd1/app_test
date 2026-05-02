@@ -4,8 +4,10 @@ export function createStudentModel(data) {
 
   return {
     id: data.id,
-    ten: data.ten.trim(),
-    cccd: data.cccd.trim(),
+    ten: String(data.ten ?? "").trim(),
+    sdt: String(data.sdt ?? "").trim(),
+    tenZalo: String(data.tenZalo ?? "").trim(),
+    cccd: String(data.cccd ?? "").trim(),
     loaiBang: data.loaiBang?.trim() || "B tự động",
     tongHocPhi,
     daNop,

@@ -31,6 +31,7 @@ export function createStudentCard(student, actions, options = {}) {
 
   const paymentStatus = paymentService.getPaymentStatus(student);
   const datStatus = progressService.getDatStatus(student);
+  const canEdit = permissions.canEditStudent || permissions.canEditStudentDat;
 
   const header = document.createElement("div");
   header.className = "student-card__header";
@@ -38,43 +39,58 @@ export function createStudentCard(student, actions, options = {}) {
     <div>
       <p class="eyebrow">${student.id}</p>
       <h3>${student.ten}</h3>
-      <p class="muted">${student.cccd} · Hạng ${student.loaiBang}</p>
+      <p class="muted">${
+        permissions.canViewSensitiveStudentInfo ? `${student.sdt} · ` : ""
+      }Hạng ${student.loaiBang}</p>
     </div>
   `;
 
   const body = document.createElement("div");
   body.className = "student-card__body";
-  body.innerHTML = `
-    <div class="metric-row">
-      <span>Đã nộp</span>
-      <strong>${formatCurrency(student.daNop)}</strong>
-    </div>
-    <div class="metric-row">
-      <span>Còn thiếu</span>
-      <strong>${formatCurrency(student.conThieu)}</strong>
-    </div>
-    <div class="metric-row">
-      <span>Km DAT</span>
-      <strong>${student.soKmDAT} km</strong>
-    </div>
-    <p class="stage-note">${progressService.getStageSummary(student)}</p>
-  `;
+  body.innerHTML = permissions.canViewSensitiveStudentInfo
+    ? `
+      <div class="metric-row">
+        <span>Đã nộp</span>
+        <strong>${formatCurrency(student.daNop)}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Còn thiếu</span>
+        <strong>${formatCurrency(student.conThieu)}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Km DAT</span>
+        <strong>${student.soKmDAT} km</strong>
+      </div>
+      <p class="stage-note">${progressService.getStageSummary(student)}</p>
+    `
+    : `
+      <div class="metric-row">
+        <span>Loại bằng</span>
+        <strong>${student.loaiBang}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Km DAT</span>
+        <strong>${student.soKmDAT} km</strong>
+      </div>
+    `;
 
   const statusGroup = document.createElement("div");
   statusGroup.className = "student-card__status";
-  statusGroup.append(
-    createStatusTag(paymentStatus),
-    createStatusTag({ label: `Hạng ${student.loaiBang}`, tone: "info" }),
-    createStatusTag({
-      label: student.daHocLyThuyet ? "Đã học lý thuyết" : "Chưa học lý thuyết",
-      tone: student.daHocLyThuyet ? "success" : "danger",
-    }),
-    createStatusTag({
-      label: student.daHocSaHinh ? "Đã học sa hình" : "Chưa học sa hình",
-      tone: student.daHocSaHinh ? "success" : "warning",
-    }),
-    createStatusTag(datStatus),
-  );
+  statusGroup.append(createStatusTag({ label: `Hạng ${student.loaiBang}`, tone: "info" }), createStatusTag(datStatus));
+
+  if (permissions.canViewSensitiveStudentInfo) {
+    statusGroup.prepend(createStatusTag(paymentStatus));
+    statusGroup.append(
+      createStatusTag({
+        label: student.daHocLyThuyet ? "Đã học lý thuyết" : "Chưa học lý thuyết",
+        tone: student.daHocLyThuyet ? "success" : "danger",
+      }),
+      createStatusTag({
+        label: student.daHocSaHinh ? "Đã học sa hình" : "Chưa học sa hình",
+        tone: student.daHocSaHinh ? "success" : "warning",
+      }),
+    );
+  }
 
   const footer = document.createElement("div");
   footer.className = "student-card__footer";
@@ -93,10 +109,10 @@ export function createStudentCard(student, actions, options = {}) {
   detailButton.addEventListener("click", () => actions.onOpenDetail(student.id));
   footer.appendChild(detailButton);
 
-  if (permissions.canEditStudent) {
+  if (canEdit) {
     const editButton = document.createElement("button");
     editButton.className = "secondary-button compact-button";
-    editButton.textContent = "Sửa";
+    editButton.textContent = permissions.canEditStudent ? "Sửa" : "Sửa km DAT";
     editButton.addEventListener("click", () => actions.onEdit(student.id));
     footer.appendChild(editButton);
   }

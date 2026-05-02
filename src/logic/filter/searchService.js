@@ -8,7 +8,9 @@ export const searchService = {
     return students.filter((student) => {
       return (
         student.ten.toLowerCase().includes(keyword) ||
-        student.cccd.toLowerCase().includes(keyword)
+        student.cccd.toLowerCase().includes(keyword) ||
+        student.sdt.toLowerCase().includes(keyword) ||
+        student.tenZalo.toLowerCase().includes(keyword)
       );
     });
   },

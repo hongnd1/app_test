@@ -1,5 +1,6 @@
-﻿import { createScheduleModel } from "../../models/Schedule.js";
+import { createScheduleModel } from "../../models/Schedule.js";
 import { scheduleRepository } from "./scheduleRepository.js";
+import { getScheduleSlot } from "./scheduleSlots.js";
 import { scheduleValidator } from "./scheduleValidator.js";
 
 function normalizeSchedules(items) {
@@ -53,15 +54,26 @@ export const scheduleService = {
 
   async createSchedule(payload, student) {
     const schedules = await this.getAllSchedules();
+    const slot = getScheduleSlot(payload.slotKey);
     const schedule = createScheduleModel({
       id: generateScheduleId(schedules),
       studentId: student?.id,
       studentName: student?.ten,
+      studentPhone: student?.sdt,
+      studentZaloName: student?.tenZalo,
       licenseType: student?.loaiBang,
       date: payload.date,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
+      slotKey: slot?.key,
+      slotLabel: slot?.label,
+      startTime: slot?.startTime,
+      endTime: slot?.endTime,
       note: payload.note,
+      meetingLocation: "",
+      meetingLocationStatus: "pending",
+      teacherReminderNote: "Cần hẹn địa điểm chạy DAT với học viên.",
+      teacherConfirmed: false,
+      reminderCreatedAt: new Date().toISOString(),
+      reminderUpdatedAt: new Date().toISOString(),
     });
 
     const validation = scheduleValidator.validate(schedule, student, schedules);
@@ -73,8 +85,50 @@ export const scheduleService = {
     return { success: true, schedule };
   },
 
+  async updateMeetingLocation(scheduleId, payload) {
+    const schedules = await this.getAllSchedules();
+    const currentSchedule = schedules.find((item) => item.id === scheduleId);
+
+    if (!currentSchedule) {
+      return { success: false, message: "Không tìm thấy lịch học cần cập nhật địa điểm." };
+    }
+
+    const nextStatus = payload.meetingLocationStatus ?? "confirmed";
+    if (nextStatus === "confirmed" && !payload.meetingLocation?.trim()) {
+      return { success: false, message: "Vui lòng nhập địa điểm hẹn cho học viên." };
+    }
+
+    const updatedSchedule = createScheduleModel({
+      ...currentSchedule,
+      meetingLocation: payload.meetingLocation,
+      meetingLocationStatus: nextStatus,
+      teacherReminderNote: payload.teacherReminderNote ?? currentSchedule.teacherReminderNote,
+      teacherConfirmed:
+        payload.teacherConfirmed === undefined ? nextStatus === "confirmed" : Boolean(payload.teacherConfirmed),
+      reminderUpdatedAt: new Date().toISOString(),
+      meetingNote: payload.meetingNote,
+      notificationStatus: nextStatus === "confirmed" ? "ready" : "pending",
+      notifiedAt: nextStatus === "confirmed" ? new Date().toISOString() : null,
+    });
+
+    await scheduleRepository.save(updatedSchedule);
+    return { success: true, schedule: updatedSchedule };
+  },
+
   async deleteSchedule(scheduleId) {
     await scheduleRepository.remove(scheduleId);
+  },
+
+  getScheduleById(schedules, scheduleId) {
+    return schedules.find((item) => item.id === scheduleId) ?? null;
+  },
+
+  getSchedulesNeedingMeetingLocation(schedules, dateString) {
+    return schedules.filter(
+      (item) =>
+        item.date === dateString &&
+        (item.meetingLocationStatus === "pending" || !item.teacherConfirmed),
+    );
   },
 
   getScheduleBuckets(schedules, { month, year, selectedDate }) {

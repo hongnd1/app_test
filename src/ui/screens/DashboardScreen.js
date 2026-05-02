@@ -1,3 +1,4 @@
+import { getScheduleSlotList } from "../../logic/schedule/scheduleSlots.js";
 import { createFilterBar } from "../components/FilterBar.js";
 import { createStudentCard } from "../components/StudentCard.js";
 import { createStudentDetail } from "../components/StudentDetail.js";
@@ -68,23 +69,125 @@ function createProgressBar(item, onClick) {
   return button;
 }
 
+function createReminderPanel(props) {
+  const section = document.createElement("section");
+  section.className = "panel reminder-panel";
+  section.innerHTML = `
+    <div class="panel__header">
+      <div>
+        <p class="eyebrow">Nhắc hẹn DAT</p>
+        <h2>${props.reminderSummary.pendingCount} lịch cần hẹn địa điểm</h2>
+      </div>
+      <div class="toolbar-actions">
+        ${
+          props.supportsBrowserNotifications
+            ? `<button type="button" class="secondary-button" data-action="enable-notification">${
+                props.notificationPermission === "granted" ? "Đã bật thông báo" : "Bật thông báo"
+              }</button>`
+            : ""
+        }
+        <button type="button" class="primary-button" data-action="open-schedule">Mở lịch cần xử lý</button>
+      </div>
+    </div>
+    <div class="schedule-list"></div>
+  `;
+
+  const list = section.querySelector(".schedule-list");
+  props.reminderSummary.pendingSchedules.slice(0, 5).forEach((schedule) => {
+    const item = document.createElement("div");
+    item.className = "schedule-card";
+    item.innerHTML = `
+      <div class="schedule-card__header">
+        <div>
+          <p class="eyebrow">${schedule.slotLabel || schedule.time}</p>
+          <h3>${schedule.studentName}</h3>
+          <p class="muted">${schedule.licenseType} · ${schedule.date}</p>
+        </div>
+      </div>
+      <p class="schedule-note">${schedule.teacherReminderNote || "Cần hẹn địa điểm chạy DAT với học viên."}</p>
+    `;
+    list.appendChild(item);
+  });
+
+  section.querySelector('[data-action="open-schedule"]').addEventListener("click", props.onOpenScheduleTab);
+
+  const enableButton = section.querySelector('[data-action="enable-notification"]');
+  if (enableButton) {
+    enableButton.disabled = props.notificationPermission === "granted";
+    enableButton.addEventListener("click", props.onRequestNotificationPermission);
+  }
+
+  return section;
+}
+
+function createNotificationPopup(notification, handlers) {
+  const modal = document.createElement("div");
+  modal.className = "modal-shell";
+  modal.innerHTML = `
+    <section class="panel reminder-popup-panel">
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Nhắc việc</p>
+          <h2>${notification.title}</h2>
+        </div>
+        <button class="icon-button" type="button" aria-label="Đóng">×</button>
+      </div>
+      <p class="hero-copy">${notification.body}</p>
+      <div class="form-actions">
+        <button type="button" class="secondary-button" data-action="dismiss">Đóng</button>
+        <button type="button" class="primary-button" data-action="open-schedule">Mở dashboard lịch</button>
+      </div>
+    </section>
+  `;
+
+  modal.querySelector(".icon-button").addEventListener("click", handlers.onDismiss);
+  modal.querySelector('[data-action="dismiss"]').addEventListener("click", handlers.onDismiss);
+  modal.querySelector('[data-action="open-schedule"]').addEventListener("click", handlers.onOpenScheduleTab);
+  return modal;
+}
+
 function createScheduleCard(schedule, actions, permissions) {
   const card = document.createElement("article");
   card.className = "schedule-card";
+
+  const actionButtons = [];
+  if (permissions.canAssignMeetingLocation) {
+    actionButtons.push('<button class="secondary-button compact-button" type="button" data-action="meeting">Địa điểm hẹn</button>');
+  }
+  if (permissions.canDeleteSchedule) {
+    actionButtons.push('<button class="ghost-danger-button compact-button" type="button" data-action="delete">Xóa</button>');
+  }
+
   card.innerHTML = `
     <div class="schedule-card__header">
       <div>
-        <p class="eyebrow">${schedule.time}</p>
+        <p class="eyebrow">${schedule.slotLabel || schedule.time}</p>
         <h3>${schedule.studentName}</h3>
-        <p class="muted">${schedule.licenseType} · ${schedule.date}</p>
+        <p class="muted">${schedule.licenseType} · ${schedule.date} · ${schedule.time}</p>
       </div>
-      ${permissions.canDeleteSchedule ? '<button class="ghost-danger-button compact-button" type="button">Xóa</button>' : ""}
+      <div class="toolbar-actions">
+        ${actionButtons.join("")}
+      </div>
     </div>
     <p class="schedule-note">${schedule.note || "Chưa có ghi chú"}</p>
+    ${
+      permissions.canAssignMeetingLocation && schedule.meetingLocation
+        ? `<p class="schedule-note"><strong>Điểm hẹn:</strong> ${schedule.meetingLocation}</p>
+           <p class="schedule-note"><strong>Thông báo:</strong> ${
+             schedule.meetingNote || "Đã chuẩn bị thông báo cho học viên"
+           }</p>`
+        : ""
+    }
   `;
 
-  if (permissions.canDeleteSchedule) {
-    card.querySelector("button").addEventListener("click", () => actions.onDelete(schedule.id));
+  const deleteButton = card.querySelector('[data-action="delete"]');
+  if (deleteButton) {
+    deleteButton.addEventListener("click", () => actions.onDelete(schedule.id));
+  }
+
+  const meetingButton = card.querySelector('[data-action="meeting"]');
+  if (meetingButton) {
+    meetingButton.addEventListener("click", () => actions.onMeeting(schedule.id));
   }
 
   return card;
@@ -129,6 +232,16 @@ function createScheduleForm(student, students, selectedDate, handlers) {
     )
     .join("");
 
+  const slotOptions = getScheduleSlotList()
+    .map(
+      (slot) => `
+        <option value="${slot.key}" ${slot.key === "morning" ? "selected" : ""}>
+          ${slot.label} (${slot.startTime} - ${slot.endTime})
+        </option>
+      `,
+    )
+    .join("");
+
   const wrapper = document.createElement("section");
   wrapper.className = "panel schedule-form-panel";
   wrapper.innerHTML = `
@@ -153,16 +266,14 @@ function createScheduleForm(student, students, selectedDate, handlers) {
           <input type="date" name="date" value="${selectedDate}" required />
         </label>
         <label class="field">
-          <span>Giờ bắt đầu</span>
-          <input type="time" name="startTime" required />
-        </label>
-        <label class="field">
-          <span>Giờ kết thúc</span>
-          <input type="time" name="endTime" required />
+          <span>Ca học</span>
+          <select name="slotKey" required>
+            ${slotOptions}
+          </select>
         </label>
         <label class="field">
           <span>Ghi chú</span>
-          <input type="text" name="note" placeholder="Ví dụ: Ca sáng sân A" />
+          <input type="text" name="note" placeholder="Ví dụ: Chuẩn bị xe sân A" />
         </label>
       </div>
       <p class="form-message" hidden></p>
@@ -187,8 +298,7 @@ function createScheduleForm(student, students, selectedDate, handlers) {
       const result = await handlers.onSave({
         studentId: formData.get("studentId"),
         date: formData.get("date"),
-        startTime: formData.get("startTime"),
-        endTime: formData.get("endTime"),
+        slotKey: formData.get("slotKey"),
         note: formData.get("note"),
       });
 
@@ -202,6 +312,103 @@ function createScheduleForm(student, students, selectedDate, handlers) {
     } catch (error) {
       messageElement.hidden = false;
       messageElement.textContent = "Không thể lưu lịch học.";
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+
+  return wrapper;
+}
+
+function createMeetingLocationForm(schedule, handlers) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "panel schedule-form-panel";
+  wrapper.innerHTML = `
+    <div class="panel__header">
+      <div>
+        <p class="eyebrow">Địa điểm hẹn</p>
+        <h2>${schedule.studentName}</h2>
+      </div>
+      <button class="icon-button" type="button" aria-label="Đóng">×</button>
+    </div>
+    <form class="student-form">
+      <div class="form-grid">
+        <label class="field">
+          <span>Loại bằng</span>
+          <input type="text" value="${schedule.licenseType}" readonly />
+        </label>
+        <label class="field">
+          <span>Khung giờ</span>
+          <input type="text" value="${schedule.slotLabel || schedule.time}" readonly />
+        </label>
+        <label class="field">
+          <span>Địa điểm hẹn</span>
+          <input type="text" name="meetingLocation" value="${schedule.meetingLocation ?? ""}" />
+        </label>
+        <label class="field">
+          <span>Nội dung thông báo</span>
+          <input
+            type="text"
+            name="meetingNote"
+            value="${schedule.meetingNote ?? ""}"
+            placeholder="Ví dụ: Có mặt trước 15 phút, mang theo CCCD"
+          />
+        </label>
+        <label class="field">
+          <span>Ghi chú nhắc GV/admin</span>
+          <input
+            type="text"
+            name="teacherReminderNote"
+            value="${schedule.teacherReminderNote ?? ""}"
+            placeholder="Ví dụ: Gọi học viên trước 20:00"
+          />
+        </label>
+        <label class="field">
+          <span>Trạng thái hẹn địa điểm</span>
+          <select name="meetingLocationStatus">
+            <option value="confirmed" ${schedule.meetingLocationStatus === "confirmed" ? "selected" : ""}>Đã hẹn</option>
+            <option value="pending" ${schedule.meetingLocationStatus === "pending" ? "selected" : ""}>Chưa hẹn</option>
+            <option value="cancelled" ${schedule.meetingLocationStatus === "cancelled" ? "selected" : ""}>Hủy</option>
+          </select>
+        </label>
+      </div>
+      <p class="form-message" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="secondary-button">Hủy</button>
+        <button type="submit" class="primary-button">Lưu địa điểm hẹn</button>
+      </div>
+    </form>
+  `;
+
+  const form = wrapper.querySelector("form");
+  const messageElement = wrapper.querySelector(".form-message");
+  const submitButton = wrapper.querySelector('button[type="submit"]');
+  wrapper.querySelector(".icon-button").addEventListener("click", handlers.onClose);
+  wrapper.querySelector(".secondary-button").addEventListener("click", handlers.onClose);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    submitButton.disabled = true;
+    try {
+      const formData = new FormData(form);
+      const result = await handlers.onSave({
+        meetingLocation: formData.get("meetingLocation"),
+        meetingNote: formData.get("meetingNote"),
+        teacherReminderNote: formData.get("teacherReminderNote"),
+        meetingLocationStatus: formData.get("meetingLocationStatus"),
+        teacherConfirmed: formData.get("meetingLocationStatus") === "confirmed",
+      });
+
+      if (!result.success) {
+        messageElement.hidden = false;
+        messageElement.textContent = result.message;
+        return;
+      }
+
+      messageElement.hidden = true;
+    } catch (error) {
+      messageElement.hidden = false;
+      messageElement.textContent = "Không thể lưu địa điểm hẹn.";
     } finally {
       submitButton.disabled = false;
     }
@@ -301,23 +508,16 @@ function renderScheduleTab(container, props) {
     </div>
   `;
 
+  const scheduleActions = {
+    onDelete: props.onDeleteSchedule,
+    onMeeting: props.onOpenMeetingLocationForm,
+  };
+
   const overview = document.createElement("div");
   overview.className = "schedule-overview-grid";
   overview.append(
-    renderScheduleList(
-      "Hôm nay",
-      props.scheduleBuckets.today,
-      { onDelete: props.onDeleteSchedule },
-      props.permissions,
-      fullDateLabel(props.scheduleBuckets.todayDate),
-    ),
-    renderScheduleList(
-      "Ngày mai",
-      props.scheduleBuckets.tomorrow,
-      { onDelete: props.onDeleteSchedule },
-      props.permissions,
-      fullDateLabel(props.scheduleBuckets.tomorrowDate),
-    ),
+    renderScheduleList("Hôm nay", props.scheduleBuckets.today, scheduleActions, props.permissions, fullDateLabel(props.scheduleBuckets.todayDate)),
+    renderScheduleList("Ngày mai", props.scheduleBuckets.tomorrow, scheduleActions, props.permissions, fullDateLabel(props.scheduleBuckets.tomorrowDate)),
   );
   section.appendChild(overview);
 
@@ -325,7 +525,7 @@ function renderScheduleTab(container, props) {
   const selectedSection = renderScheduleList(
     `Lịch ngày ${props.filters.selectedScheduleDate}`,
     props.scheduleBuckets.selectedDay,
-    { onDelete: props.onDeleteSchedule },
+    scheduleActions,
     props.permissions,
   );
 
@@ -347,6 +547,18 @@ function renderScheduleTab(container, props) {
       createScheduleForm(props.scheduleStudent, props.scheduleCandidates, props.filters.selectedScheduleDate, {
         onClose: props.onCloseScheduleForm,
         onSave: props.onSaveSchedule,
+      }),
+    );
+    section.appendChild(modal);
+  }
+
+  if (props.meetingSchedule && props.permissions.canAssignMeetingLocation) {
+    const modal = document.createElement("div");
+    modal.className = "modal-shell";
+    modal.appendChild(
+      createMeetingLocationForm(props.meetingSchedule, {
+        onClose: props.onCloseMeetingLocationForm,
+        onSave: props.onSaveMeetingLocation,
       }),
     );
     section.appendChild(modal);
@@ -420,7 +632,7 @@ function renderStudentsTab(container, props) {
 
   if (
     (props.filters.formMode === "create" && props.permissions.canCreateStudent) ||
-    (props.editingStudent && props.permissions.canEditStudent)
+    (props.editingStudent && (props.permissions.canEditStudent || props.permissions.canEditStudentDat))
   ) {
     const modal = document.createElement("div");
     modal.className = "modal-shell";
@@ -428,7 +640,7 @@ function renderStudentsTab(container, props) {
       createStudentForm(props.editingStudent, props.filters.formMode, {
         onClose: props.onCloseForm,
         onSave: props.onSaveStudent,
-      }),
+      }, props.permissions),
     );
     section.appendChild(modal);
   }
@@ -484,6 +696,17 @@ export function DashboardScreen(root, props) {
   container.querySelector(".logout-button").addEventListener("click", props.onLogout);
 
   const content = container.querySelector(".tab-content");
+  if (props.permissions.canAssignMeetingLocation && props.reminderSummary.hasPending) {
+    content.appendChild(
+      createReminderPanel({
+        reminderSummary: props.reminderSummary,
+        supportsBrowserNotifications: props.supportsBrowserNotifications,
+        notificationPermission: props.notificationPermission,
+        onRequestNotificationPermission: props.onRequestNotificationPermission,
+        onOpenScheduleTab: props.onOpenScheduleTab,
+      }),
+    );
+  }
   if (props.filters.activeTab === "progress") {
     renderProgressTab(content, props);
   }
@@ -502,4 +725,13 @@ export function DashboardScreen(root, props) {
   );
 
   root.appendChild(container);
+
+  if (props.popupNotification) {
+    root.appendChild(
+      createNotificationPopup(props.popupNotification, {
+        onDismiss: props.onDismissPopupNotification,
+        onOpenScheduleTab: props.onOpenScheduleTab,
+      }),
+    );
+  }
 }
