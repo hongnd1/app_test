@@ -139,7 +139,7 @@ export function toAuthMessage(error) {
     "auth/too-many-requests": "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau.",
     "auth/network-request-failed": "Không thể kết nối đến Firebase. Kiểm tra mạng và cấu hình hosting.",
     "profile/missing":
-      "Tài khoản Google đã đăng nhập thành công nhưng chưa có quyền trong users/{uid}. Hãy tạo document users/{uid} cho tài khoản này.",
+      "Tài khoản của bạn chưa được cấp quyền đăng nhập. Vui lòng liên hệ thầy giáo hoặc admin để được cấp quyền truy cập.",
   };
 
   return messages[error?.code] ?? "Không thể đăng nhập bằng Firebase Authentication.";
