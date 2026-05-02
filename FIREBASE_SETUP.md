@@ -22,8 +22,15 @@ Trong Firebase Console:
 2. Chon `Sign-in method`
 3. Bật `Email/Password`
 4. Bật thêm `Google` nếu muốn dùng đăng nhập Google song song với email/password
+5. Trong phần `Authorized domains`, đảm bảo domain đang chạy app đã được thêm vào
 
 Sau do tao user trong tab `Users`.
+
+Lưu ý cho đăng nhập Google:
+
+- Với đăng nhập Google, user không bắt buộc phải tạo trước trong tab `Users`.
+- Nhưng sau khi đăng nhập thành công qua Google, app vẫn yêu cầu phải có document `users/{uid}` trong Firestore để cấp quyền.
+- Nếu thiếu `users/{uid}`, app sẽ tự đăng xuất lại và báo rõ tài khoản chưa được cấp quyền.
 
 ## 2. Tao users/{uid}
 

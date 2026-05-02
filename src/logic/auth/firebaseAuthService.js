@@ -121,7 +121,7 @@ function buildSession(user, profile) {
   };
 }
 
-function toLoginMessage(error) {
+export function toAuthMessage(error) {
   const messages = {
     "auth/invalid-email": "Email không đúng định dạng.",
     "auth/missing-password": "Vui lòng nhập mật khẩu.",
@@ -131,14 +131,36 @@ function toLoginMessage(error) {
     "auth/popup-closed-by-user": "Bạn đã đóng cửa sổ đăng nhập Google.",
     "auth/cancelled-popup-request": "Yêu cầu đăng nhập Google đã bị hủy.",
     "auth/popup-blocked": "Trình duyệt đang chặn cửa sổ đăng nhập Google.",
+    "auth/operation-not-allowed": "Firebase Authentication chưa bật đăng nhập Google cho project này.",
+    "auth/unauthorized-domain":
+      "Domain hiện tại chưa được cho phép trong Firebase Authentication. Hãy thêm domain hosting vào Authorized domains.",
     "auth/account-exists-with-different-credential":
       "Email này đã tồn tại với phương thức đăng nhập khác.",
     "auth/too-many-requests": "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau.",
     "auth/network-request-failed": "Không thể kết nối đến Firebase. Kiểm tra mạng và cấu hình hosting.",
-    "profile/missing": "Tài khoản đã đăng nhập nhưng chưa được cấp quyền trong users/{uid}.",
+    "profile/missing":
+      "Tài khoản Google đã đăng nhập thành công nhưng chưa có quyền trong users/{uid}. Hãy tạo document users/{uid} cho tài khoản này.",
   };
 
   return messages[error?.code] ?? "Không thể đăng nhập bằng Firebase Authentication.";
+}
+
+async function verifyAuthorizedProfile(user) {
+  try {
+    await getUserProfile(user.uid);
+    return { success: true };
+  } catch (error) {
+    try {
+      await signOut(auth);
+    } catch {
+      // Ignore sign-out cleanup failures after profile validation errors.
+    }
+
+    return {
+      success: false,
+      message: toAuthMessage(error),
+    };
+  }
 }
 
 export const firebaseAuthService = {
@@ -150,20 +172,24 @@ export const firebaseAuthService = {
 
     try {
       await ensurePersistence();
-      await signInWithEmailAndPassword(auth, credentials.email.trim(), credentials.password.trim());
-      return { success: true };
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        credentials.email.trim(),
+        credentials.password.trim(),
+      );
+      return verifyAuthorizedProfile(credential.user);
     } catch (error) {
-      return { success: false, message: toLoginMessage(error) };
+      return { success: false, message: toAuthMessage(error) };
     }
   },
 
   async loginWithGoogle() {
     try {
       await ensurePersistence();
-      await signInWithPopup(auth, googleProvider);
-      return { success: true };
+      const credential = await signInWithPopup(auth, googleProvider);
+      return verifyAuthorizedProfile(credential.user);
     } catch (error) {
-      return { success: false, message: toLoginMessage(error) };
+      return { success: false, message: toAuthMessage(error) };
     }
   },
 

@@ -1,5 +1,5 @@
 import { notificationConfig } from "../data/config/notificationConfig.js";
-import { firebaseAuthService } from "../logic/auth/firebaseAuthService.js";
+import { firebaseAuthService, toAuthMessage } from "../logic/auth/firebaseAuthService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
 import { notificationInboxService } from "../logic/notification/notificationInboxService.js";
@@ -914,7 +914,7 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
     console.error("Không thể đồng bộ Firebase Authentication.", error);
     state.session = null;
     state.authReady = true;
-    state.loginMessage = "Không thể xác thực với Firebase hoặc đọc users/{uid}.";
+    state.loginMessage = toAuthMessage(error);
     clearDataState();
     resetUiState();
     refreshNotificationState();
