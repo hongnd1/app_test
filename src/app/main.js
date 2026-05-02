@@ -1,7 +1,9 @@
+import { notificationConfig } from "../data/config/notificationConfig.js";
 import { firebaseAuthService } from "../logic/auth/firebaseAuthService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
-import { notificationService } from "../logic/notification/notificationService.js";
+import { notificationModeService } from "../logic/notification/notificationModeService.js";
+import { realtimeDatNotificationService } from "../logic/notification/realtimeDatNotificationService.js";
 import { progressService } from "../logic/progress/progressService.js";
 import { scheduleReminderService } from "../logic/reminder/scheduleReminderService.js";
 import { scheduleService } from "../logic/schedule/scheduleService.js";
@@ -23,6 +25,7 @@ const defaultPermissions = {
   canDeleteSchedule: false,
   canAssignMeetingLocation: false,
   canEnablePushNotifications: false,
+  canSetNotificationMode: false,
 };
 
 const state = {
@@ -35,7 +38,8 @@ const state = {
   loginMessage: "",
   popupNotification: null,
   toastMessage: null,
-  notificationPermission: notificationService.getNotificationPermissionStatus(),
+  notificationPermission: realtimeDatNotificationService.getNotificationPermissionStatus(),
+  notificationMode: notificationModeService.getCurrentMode(),
   ui: {
     activeTab: "progress",
     scheduleListTab: "all",
@@ -63,8 +67,9 @@ const state = {
 let pendingSearchRefocus = false;
 let currentLoadId = 0;
 let stopReminderScheduler = null;
+let stopRealtimeDatListener = null;
 let stopForegroundMessages = null;
-let stopNotificationBridge = null;
+let fcmNotificationServicePromise = null;
 
 function getTodayString() {
   return new Date().toISOString().slice(0, 10);
@@ -76,6 +81,74 @@ function getPermissions() {
 
 function hasPermission(permissionKey) {
   return Boolean(getPermissions()[permissionKey]);
+}
+
+function getNotificationButtonLabel() {
+  if (notificationModeService.isRealtimeMode()) {
+    return state.notificationPermission === "granted"
+      ? "Da bat thong bao trinh duyet"
+      : "Bat thong bao trinh duyet";
+  }
+
+  if (notificationModeService.isFcmMode()) {
+    return state.notificationPermission === "granted"
+      ? "Da bat push notification"
+      : "Bat push notification";
+  }
+
+  return "";
+}
+
+function showToast(title, body) {
+  state.toastMessage = { title, body };
+  render();
+}
+
+function openPopupNotification(notification) {
+  state.popupNotification = notification;
+  render();
+}
+
+function closePopupNotification() {
+  state.popupNotification = null;
+  render();
+}
+
+function closeToastNotification() {
+  state.toastMessage = null;
+  render();
+}
+
+function showBrowserNotificationIfGranted(notification) {
+  if (!realtimeDatNotificationService.isBrowserNotificationSupported()) {
+    return false;
+  }
+
+  if (realtimeDatNotificationService.getNotificationPermissionStatus() !== "granted") {
+    return false;
+  }
+
+  new Notification(notification.title, {
+    body: notification.body,
+    tag: notification.tag,
+  });
+
+  return true;
+}
+
+async function getFcmNotificationService() {
+  if (!fcmNotificationServicePromise) {
+    fcmNotificationServicePromise = import("../logic/notification/notificationService.js").then(
+      (module) => module.notificationService,
+    );
+  }
+
+  return fcmNotificationServicePromise;
+}
+
+function refreshNotificationState() {
+  state.notificationMode = notificationModeService.getCurrentMode();
+  state.notificationPermission = realtimeDatNotificationService.getNotificationPermissionStatus();
 }
 
 function resetUiState() {
@@ -106,11 +179,23 @@ function stopReminderLoop() {
   }
 }
 
+function stopRealtimeNotificationLoop() {
+  if (stopRealtimeDatListener) {
+    stopRealtimeDatListener();
+    stopRealtimeDatListener = null;
+  }
+}
+
 function stopForegroundMessageListener() {
   if (stopForegroundMessages) {
     stopForegroundMessages();
     stopForegroundMessages = null;
   }
+}
+
+function stopNotificationRuntime() {
+  stopRealtimeNotificationLoop();
+  stopForegroundMessageListener();
 }
 
 function maybeTriggerScheduleReminder(now = new Date()) {
@@ -123,7 +208,8 @@ function maybeTriggerScheduleReminder(now = new Date()) {
     return;
   }
 
-  notificationService.notify(notification);
+  openPopupNotification(notification);
+  showBrowserNotificationIfGranted(notification);
 }
 
 function syncReminderScheduler() {
@@ -136,6 +222,41 @@ function syncReminderScheduler() {
   stopReminderScheduler = scheduleReminderService.startScheduler((now) => {
     maybeTriggerScheduleReminder(now);
   });
+}
+
+async function syncNotificationRuntime() {
+  stopNotificationRuntime();
+  refreshNotificationState();
+
+  if (!state.session || !notificationModeService.canUseNotification(state.session)) {
+    return;
+  }
+
+  if (notificationModeService.isNotificationOff()) {
+    return;
+  }
+
+  if (notificationModeService.isRealtimeMode()) {
+    stopRealtimeDatListener = realtimeDatNotificationService.startListening((notification) => {
+      state.toastMessage = {
+        title: notification.title,
+        body: notification.body,
+      };
+      render();
+    });
+    return;
+  }
+
+  if (notificationModeService.isFcmMode()) {
+    const notificationService = await getFcmNotificationService();
+    stopForegroundMessages = notificationService.listenForegroundMessages((notification) => {
+      state.toastMessage = {
+        title: notification.title,
+        body: notification.body,
+      };
+      render();
+    });
+  }
 }
 
 async function syncStudents() {
@@ -174,8 +295,8 @@ async function loadDashboardData() {
       return;
     }
 
-    console.error("Không thể tải dữ liệu Firebase.", error);
-    state.loadError = "Không thể tải dữ liệu từ Firebase. Kiểm tra Firestore rules và dữ liệu users/{uid}.";
+    console.error("Khong the tai du lieu Firebase.", error);
+    state.loadError = "Khong the tai du lieu tu Firebase. Kiem tra Firestore rules va du lieu users/{uid}.";
   } finally {
     if (loadId === currentLoadId) {
       state.isLoadingData = false;
@@ -295,10 +416,14 @@ async function handleLogin(credentials) {
 
 async function handleLogout() {
   try {
-    await notificationService.disableCurrentDeviceToken(state.session);
+    if (notificationModeService.isFcmMode()) {
+      const notificationService = await getFcmNotificationService();
+      await notificationService.disableCurrentDeviceToken(state.session);
+    }
+
     await firebaseAuthService.logout();
   } catch (error) {
-    console.error("Không thể đăng xuất.", error);
+    console.error("Khong the dang xuat.", error);
   }
 }
 
@@ -307,22 +432,44 @@ function handleOpenScheduleTab() {
 }
 
 async function handleRequestNotificationPermission() {
-  const result = await notificationService.requestNotificationPermissionAndSaveToken(state.session);
-  state.notificationPermission = notificationService.getNotificationPermissionStatus();
-  state.toastMessage = {
-    title: result.success ? "Thông báo" : "Không thể bật thông báo",
-    body: result.message,
-  };
-  render();
+  if (!state.session || !notificationModeService.canUseNotification(state.session)) {
+    return;
+  }
+
+  if (notificationModeService.isNotificationOff()) {
+    return;
+  }
+
+  let result = { success: false, message: "Thong bao dang tat o mode hien tai." };
+
+  try {
+    if (notificationModeService.isRealtimeMode()) {
+      result = await realtimeDatNotificationService.requestBrowserNotificationPermission();
+    } else if (notificationModeService.isFcmMode()) {
+      const notificationService = await getFcmNotificationService();
+      result = await notificationService.requestNotificationPermissionAndSaveToken(state.session);
+    }
+  } catch (error) {
+    console.error("Khong the bat thong bao.", error);
+    result = { success: false, message: "Khong the bat thong bao tren thiet bi nay." };
+  }
+
+  refreshNotificationState();
+  showToast(result.success ? "Thong bao" : "Khong the bat thong bao", result.message);
 }
 
-function handleDismissPopupNotification() {
-  state.popupNotification = null;
-  render();
-}
+async function handleChangeNotificationMode(mode) {
+  if (!hasPermission("canSetNotificationMode")) {
+    return;
+  }
 
-function handleDismissToastMessage() {
-  state.toastMessage = null;
+  const changed = notificationModeService.setMode(mode);
+  if (!changed) {
+    return;
+  }
+
+  refreshNotificationState();
+  await syncNotificationRuntime();
   render();
 }
 
@@ -330,11 +477,11 @@ async function handleSaveStudent(formData) {
   const isEditing = state.ui.formMode === "edit" && state.ui.editingStudentId;
 
   if (isEditing && !(hasPermission("canEditStudent") || hasPermission("canEditStudentDat"))) {
-    return { success: false, message: "Bạn không có quyền cập nhật học viên." };
+    return { success: false, message: "Ban khong co quyen cap nhat hoc vien." };
   }
 
   if (!isEditing && !hasPermission("canCreateStudent")) {
-    return { success: false, message: "Bạn không có quyền tạo học viên." };
+    return { success: false, message: "Ban khong co quyen tao hoc vien." };
   }
 
   try {
@@ -359,18 +506,18 @@ async function handleSaveStudent(formData) {
 
     return result;
   } catch (error) {
-    console.error("Không thể lưu học viên.", error);
-    return { success: false, message: "Không thể lưu học viên lên Firebase." };
+    console.error("Khong the luu hoc vien.", error);
+    return { success: false, message: "Khong the luu hoc vien len Firebase." };
   }
 }
 
 async function handleDeleteStudent(studentId) {
   if (!hasPermission("canDeleteStudent")) {
-    window.alert("Bạn không có quyền xóa học viên.");
+    window.alert("Ban khong co quyen xoa hoc vien.");
     return;
   }
 
-  const confirmed = window.confirm("Xóa học sinh này khỏi danh sách?");
+  const confirmed = window.confirm("Xoa hoc vien nay khoi danh sach?");
   if (!confirmed) {
     return;
   }
@@ -392,14 +539,14 @@ async function handleDeleteStudent(studentId) {
           : state.ui.formMode,
     });
   } catch (error) {
-    console.error("Không thể xóa học viên.", error);
-    window.alert("Không thể xóa học viên khỏi Firebase.");
+    console.error("Khong the xoa hoc vien.", error);
+    window.alert("Khong the xoa hoc vien khoi Firebase.");
   }
 }
 
 async function handleDeleteSchedule(scheduleId) {
   if (!hasPermission("canDeleteSchedule")) {
-    window.alert("Bạn không có quyền xóa lịch học.");
+    window.alert("Ban khong co quyen xoa lich hoc.");
     return;
   }
 
@@ -408,8 +555,8 @@ async function handleDeleteSchedule(scheduleId) {
     await syncSchedules();
     render();
   } catch (error) {
-    console.error("Không thể xóa lịch học.", error);
-    window.alert("Không thể xóa lịch học khỏi Firebase.");
+    console.error("Khong the xoa lich hoc.", error);
+    window.alert("Khong the xoa lich hoc khoi Firebase.");
   }
 }
 
@@ -478,7 +625,7 @@ function handleOpenStudentTab() {
 
 async function handleSaveSchedule(payload) {
   if (!hasPermission("canCreateSchedule")) {
-    return { success: false, message: "Bạn không có quyền tạo lịch học." };
+    return { success: false, message: "Ban khong co quyen tao lich hoc." };
   }
 
   try {
@@ -498,14 +645,14 @@ async function handleSaveSchedule(payload) {
 
     return result;
   } catch (error) {
-    console.error("Không thể lưu lịch học.", error);
-    return { success: false, message: "Không thể lưu lịch học lên Firebase." };
+    console.error("Khong the luu lich hoc.", error);
+    return { success: false, message: "Khong the luu lich hoc len Firebase." };
   }
 }
 
 async function handleSaveMeetingLocation(payload) {
   if (!hasPermission("canAssignMeetingLocation")) {
-    return { success: false, message: "Bạn không có quyền cập nhật địa điểm hẹn." };
+    return { success: false, message: "Ban khong co quyen cap nhat dia diem hen." };
   }
 
   try {
@@ -521,22 +668,22 @@ async function handleSaveMeetingLocation(payload) {
 
     return result;
   } catch (error) {
-    console.error("Không thể cập nhật địa điểm hẹn.", error);
-    return { success: false, message: "Không thể lưu địa điểm hẹn lên Firebase." };
+    console.error("Khong the cap nhat dia diem hen.", error);
+    return { success: false, message: "Khong the luu dia diem hen len Firebase." };
   }
 }
 
 function getActiveFilterLabel(activeStatFilter) {
   const labels = {
-    all: "Toàn bộ học viên",
-    theoryCompleted: "Học viên đã học lý thuyết",
-    unpaid: "Học viên còn thiếu học phí",
-    saHinhCompleted: "Học viên đã học sa hình",
-    datReached: "Học viên đã đạt DAT",
-    paidCompleted: "Học viên đã hoàn tất học phí",
+    all: "Toan bo hoc vien",
+    theoryCompleted: "Hoc vien da hoc ly thuyet",
+    unpaid: "Hoc vien con thieu hoc phi",
+    saHinhCompleted: "Hoc vien da hoc sa hinh",
+    datReached: "Hoc vien da dat DAT",
+    paidCompleted: "Hoc vien da hoan tat hoc phi",
   };
 
-  return labels[activeStatFilter] ?? "Toàn bộ học viên";
+  return labels[activeStatFilter] ?? "Toan bo hoc vien";
 }
 
 function renderLoadingState(title, message) {
@@ -559,7 +706,7 @@ function renderErrorState() {
       <section class="login-panel">
         <div class="panel">
           <p class="eyebrow">Firebase</p>
-          <h2>Không tải được dữ liệu</h2>
+          <h2>Khong tai duoc du lieu</h2>
           <p class="form-message">${state.loadError}</p>
         </div>
       </section>
@@ -569,7 +716,7 @@ function renderErrorState() {
 
 function render() {
   if (!state.authReady) {
-    renderLoadingState("Đang kiểm tra phiên đăng nhập...", "Ứng dụng đang đồng bộ trạng thái Firebase Authentication.");
+    renderLoadingState("Dang kiem tra phien dang nhap...", "Ung dung dang dong bo trang thai Firebase Authentication.");
     return;
   }
 
@@ -580,7 +727,7 @@ function render() {
   }
 
   if (state.isLoadingData) {
-    renderLoadingState("Đang tải dữ liệu...", "Ứng dụng đang đồng bộ danh sách học viên và lịch học từ Firestore.");
+    renderLoadingState("Dang tai du lieu...", "Ung dung dang dong bo danh sach hoc vien va lich hoc tu Firestore.");
     return;
   }
 
@@ -622,6 +769,11 @@ function render() {
     statistics,
     progressOverview,
     reminderSummary,
+    showReminderPanel:
+      notificationConfig.enablePendingDatCard &&
+      !notificationModeService.isNotificationOff() &&
+      notificationModeService.canUseNotification(state.session) &&
+      reminderSummary.hasPending,
     activeFilterLabel: getActiveFilterLabel(state.ui.activeStatFilter),
     filters: state.ui,
     scheduleBuckets,
@@ -630,6 +782,18 @@ function render() {
     scheduleStudent,
     meetingSchedule,
     scheduleCandidates,
+    notificationMode: state.notificationMode,
+    notificationModeLabel: notificationModeService.getNotificationModeLabel(),
+    notificationModeOptions: notificationModeService.getAvailableModes(),
+    supportsBrowserNotifications: realtimeDatNotificationService.isBrowserNotificationSupported(),
+    notificationPermission: state.notificationPermission,
+    notificationButtonLabel: getNotificationButtonLabel(),
+    showNotificationButton:
+      !notificationModeService.isNotificationOff() &&
+      notificationModeService.canUseNotification(state.session),
+    showNotificationModeSelector: hasPermission("canSetNotificationMode"),
+    onChangeNotificationMode: handleChangeNotificationMode,
+    onRequestNotificationPermission: handleRequestNotificationPermission,
     onLogout: handleLogout,
     onChangeTab: (activeTab) => updateUi({ activeTab }),
     onChangeScheduleListTab: (scheduleListTab) => updateUi({ scheduleListTab }),
@@ -655,13 +819,10 @@ function render() {
     onOpenMeetingLocationForm: openMeetingLocationForm,
     onCloseMeetingLocationForm: closeMeetingLocationForm,
     onSaveMeetingLocation: handleSaveMeetingLocation,
-    supportsBrowserNotifications: notificationService.isBrowserNotificationSupported(),
-    notificationPermission: state.notificationPermission,
-    onRequestNotificationPermission: handleRequestNotificationPermission,
     popupNotification: state.popupNotification,
-    onDismissPopupNotification: handleDismissPopupNotification,
+    onDismissPopupNotification: closePopupNotification,
     toastMessage: state.toastMessage,
-    onDismissToastMessage: handleDismissToastMessage,
+    onDismissToastMessage: closeToastNotification,
   });
 
   refocusSearchIfNeeded();
@@ -670,15 +831,16 @@ function render() {
 firebaseAuthService.subscribe(async ({ session, error }) => {
   currentLoadId += 1;
   stopReminderLoop();
-  stopForegroundMessageListener();
+  stopNotificationRuntime();
 
   if (error) {
-    console.error("Không thể đồng bộ Firebase Authentication.", error);
+    console.error("Khong the dong bo Firebase Authentication.", error);
     state.session = null;
     state.authReady = true;
-    state.loginMessage = "Không thể xác thực với Firebase hoặc đọc users/{uid}.";
+    state.loginMessage = "Khong the xac thuc voi Firebase hoac doc users/{uid}.";
     clearDataState();
     resetUiState();
+    refreshNotificationState();
     render();
     return;
   }
@@ -686,7 +848,7 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   state.session = session;
   state.authReady = true;
   state.loginMessage = "";
-  state.notificationPermission = notificationService.getNotificationPermissionStatus();
+  refreshNotificationState();
   resetUiState();
 
   if (!session) {
@@ -698,24 +860,8 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   await loadDashboardData();
   syncReminderScheduler();
   maybeTriggerScheduleReminder(new Date());
-  stopForegroundMessages = notificationService.listenForegroundMessages((notification) => {
-    state.toastMessage = {
-      title: notification.title,
-      body: notification.body,
-    };
-    render();
-  });
+  await syncNotificationRuntime();
+  render();
 });
-
-if (!stopNotificationBridge) {
-  stopNotificationBridge = notificationService.subscribe((notification) => {
-    if (notification.channel === "foreground-fcm") {
-      return;
-    }
-
-    state.popupNotification = notification;
-    render();
-  });
-}
 
 render();

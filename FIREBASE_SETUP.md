@@ -1,54 +1,59 @@
 # Firebase Setup
 
-## Mục tiêu
+## Muc tieu
 
-App hiện dùng:
+App hien dang dung:
 
-- Firebase Authentication với `email/password`
+- Firebase Authentication voi `email/password`
 - Firestore collection `students`
 - Firestore collection `schedules`
-- Firestore document `users/{uid}` để lấy `displayName` và `role`
-- Firestore collection `notificationTokens` để lưu token FCM của từng thiết bị
-- Firebase Cloud Functions để gửi push notification
+- Firestore document `users/{uid}` de lay `displayName` va `role`
+- Firestore collection `notificationTokens` de luu token FCM theo thiet bi
+- Notification mode theo config: `off`, `realtime`, `fcm`
+- Firebase Cloud Functions cho push notification o mode `fcm`
 
-App frontend vẫn chạy bằng static hosting như GitHub Pages vì đang dùng Firebase CDN modules.
+Frontend van chay duoc tren static hosting nhu GitHub Pages vi dang dung Firebase CDN modules.
 
-## 1. Bật Firebase Authentication
+## 1. Bat Firebase Authentication
 
 Trong Firebase Console:
 
-1. Vào `Authentication`
-2. Chọn `Sign-in method`
-3. Bật `Email/Password`
+1. Vao `Authentication`
+2. Chon `Sign-in method`
+3. Bat `Email/Password`
 
-Sau đó tạo user trong tab `Users`.
+Sau do tao user trong tab `Users`.
 
-## 2. Tạo document users/{uid}
+## 2. Tao users/{uid}
 
-Mỗi user đăng nhập phải có document:
-
-Collection: `users`
+Moi user dang nhap phai co document trong collection `users`.
 
 Document ID:
 
-- chính là `uid` của Firebase Auth user
+- chinh la `uid` cua Firebase Auth user
 
-Ví dụ:
+Vi du:
 
 ```json
 {
-  "displayName": "Nguyễn Đình Hồng",
+  "displayName": "Nguyen Dinh Hong",
   "role": "admin"
 }
 ```
 
-Các role app hiện hỗ trợ:
+Role frontend hien ho tro:
 
+- `host`
 - `admin`
 - `staff`
 - `viewer`
 
-## 3. Firestore Rules đề xuất
+Ghi chu:
+
+- `host` dung de doi notification mode tren thiet bi hien tai.
+- `host` khong tu dong co them quyen Firestore backend. Neu can, phai cap nhat rules rieng.
+
+## 3. Firestore Rules de xuat
 
 ```txt
 rules_version = '2';
@@ -120,16 +125,16 @@ service cloud.firestore {
 }
 ```
 
-## 4. Dữ liệu students
+## 4. Du lieu students
 
 ```json
 {
   "id": "HS001",
-  "ten": "Nguyễn Văn An",
+  "ten": "Nguyen Van An",
   "sdt": "0912345678",
   "tenZalo": "An Nguyen",
   "cccd": "012345678901",
-  "loaiBang": "B tự động",
+  "loaiBang": "B tu dong",
   "tongHocPhi": 10000000,
   "daNop": 6000000,
   "daHocLyThuyet": true,
@@ -138,25 +143,25 @@ service cloud.firestore {
 }
 ```
 
-## 5. Dữ liệu schedules
+## 5. Du lieu schedules
 
 ```json
 {
   "id": "DAT001",
   "studentId": "HS001",
-  "studentName": "Nguyễn Văn An",
+  "studentName": "Nguyen Van An",
   "studentPhone": "0912345678",
   "studentZaloName": "An Nguyen",
-  "licenseType": "B tự động",
+  "licenseType": "B tu dong",
   "date": "2026-05-02",
   "slotKey": "morning",
-  "slotLabel": "Ca sáng",
+  "slotLabel": "Ca sang",
   "startTime": "06:00",
   "endTime": "11:30",
-  "note": "Chuẩn bị xe sân A",
+  "note": "Chuan bi xe san A",
   "meetingLocation": "",
   "meetingLocationStatus": "pending",
-  "teacherReminderNote": "Cần hẹn địa điểm chạy DAT với học viên.",
+  "teacherReminderNote": "Can hen dia diem chay DAT voi hoc vien.",
   "teacherConfirmed": false,
   "reminderCreatedAt": "2026-05-02T08:30:00.000Z",
   "reminderUpdatedAt": "2026-05-02T08:30:00.000Z",
@@ -169,57 +174,129 @@ service cloud.firestore {
 }
 ```
 
-## 6. Quy tắc ca DAT
+## 6. Quy tac ca DAT
 
-App chỉ cho tạo lịch theo 3 ca cố định:
+App chi cho tao lich theo 3 ca co dinh:
 
-- `Ca sáng`: `06:00 - 11:30`
-- `Ca chiều`: `13:00 - 17:00`
-- `Ca tối`: `18:00 - 21:00`
+- `Ca sang`: `06:00 - 11:30`
+- `Ca chieu`: `13:00 - 17:00`
+- `Ca toi`: `18:00 - 21:00`
 
-## 7. FCM + Cloud Functions Notification
+## 7. Notification Modes
+
+Config nam tai:
+
+`src/data/config/notificationConfig.js`
+
+Mac dinh hien tai:
+
+```js
+mode: "realtime"
+```
+
+Co 3 mode:
+
+### off
+
+- Tat toan bo thong bao
+- Khong register service worker
+- Khong dung FCM
+- Khong dung Firestore realtime notification listener
+- Dashboard an nut bat thong bao
+
+### realtime
+
+- Day la mode mac dinh hien tai
+- Khong can Firebase Blaze
+- Khong can Cloud Functions
+- Khong can VAPID key
+- Dung `onSnapshot` de bao lich DAT moi khi admin/staff dang mo web app
+- Khi mo app len van hien card DAT pending
+- Neu browser da cap quyen Notification thi co the hien browser notification local
+
+### fcm
+
+- Chi dung khi Firebase project da nang cap Blaze
+- Can VAPID key
+- Can deploy Cloud Functions
+- Co the gui push khi app dang dong
+
+## 8. Cach doi mode
+
+Sua truc tiep:
+
+`src/data/config/notificationConfig.js`
+
+Vi du:
+
+```js
+mode: "realtime"
+```
+
+Doi thanh:
+
+```js
+mode: "fcm"
+```
+
+hoac:
+
+```js
+mode: "off"
+```
+
+App cung cho phep override de test nhanh bang `localStorage`:
+
+```js
+localStorage.setItem("notificationMode", "off")
+localStorage.setItem("notificationMode", "realtime")
+localStorage.setItem("notificationMode", "fcm")
+localStorage.removeItem("notificationMode")
+```
+
+Role `host` co them quyen doi mode ngay trong UI. Cai dat nay chi ap dung tren thiet bi/trinh duyet hien tai vi dang luu bang `localStorage`.
+
+## 9. FCM + Cloud Functions Notification
 
 ### Frontend
 
-Frontend chỉ:
+Frontend chi:
 
-- xin quyền Notification
-- lấy FCM token
-- lưu token vào Firestore collection `notificationTokens`
+- xin quyen Notification
+- lay FCM token
+- luu token vao Firestore collection `notificationTokens`
 
-Frontend không gửi FCM trực tiếp và không chứa server key.
+Frontend khong gui FCM truc tiep va khong chua server key.
 
-### Bật Firebase Cloud Messaging
+### Bat Firebase Cloud Messaging
 
 Trong Firebase Console:
 
-1. Vào `Project settings`
-2. Chọn tab `Cloud Messaging`
-3. Bật / cấu hình Web Push nếu chưa có
+1. Vao `Project settings`
+2. Chon tab `Cloud Messaging`
+3. Bat / cau hinh Web Push neu chua co
 
-### Lấy VAPID key
+### Lay VAPID key
 
-Trong `Firebase Console > Project settings > Cloud Messaging > Web configuration`
+Trong:
 
-- tạo hoặc xem `Web Push certificates`
-- copy `Key pair`
-- dán public key vào:
+`Firebase Console > Project settings > Cloud Messaging > Web configuration`
 
-`src/logic/notification/notificationService.js`
+- tao hoac xem `Web Push certificates`
+- copy public VAPID key
+- dan vao:
 
-Tại hằng số:
+`src/data/config/notificationConfig.js`
 
-`VAPID_KEY_PLACEHOLDER`
+Tai field:
+
+```js
+vapidKey: ""
+```
 
 ### notificationTokens
 
-Mỗi thiết bị được bật thông báo sẽ tạo một document:
-
-Collection:
-
-`notificationTokens`
-
-Ví dụ:
+Moi thiet bi duoc bat push notification se tao mot document:
 
 ```json
 {
@@ -238,11 +315,20 @@ Ví dụ:
 
 ### Cloud Functions deploy
 
+Chi deploy khi:
+
+- `notificationConfig.mode = "fcm"`
+- project da len Blaze
+
+Lenh:
+
 ```bash
 cd functions
 npm install
 firebase deploy --only functions
 ```
+
+Neu chua len Blaze thi khong can deploy `functions/`.
 
 ### Authorized domain cho GitHub Pages
 
@@ -250,7 +336,7 @@ Trong Firebase Console:
 
 `Authentication > Settings > Authorized domains`
 
-Thêm domain GitHub Pages của bạn, ví dụ:
+Them domain GitHub Pages cua ban, vi du:
 
 - `hongnd1.github.io`
 
@@ -260,54 +346,86 @@ Trong:
 
 `functions/index.js`
 
-Hiện đang có:
+Hien dang co:
 
 ```js
 const APP_URL = "https://hongnd1.github.io/app_test/";
 ```
 
-Nếu URL production khác, cần sửa lại trước khi deploy functions.
+Neu URL production khac, can sua lai truoc khi deploy functions.
 
 ### iPhone / iOS
 
-iPhone/iPad chỉ nhận Web Push tốt khi:
+iPhone/iPad chi nhan Web Push tot khi:
 
-- iOS/iPadOS hỗ trợ Web Push
-- user thêm web app vào Home Screen
-- mở app từ icon Home Screen
-- bấm `Bật thông báo`
+- iOS/iPadOS ho tro Web Push
+- user them web app vao Home Screen
+- mo app tu icon Home Screen
+- bam nut bat thong bao
 
-### Hành vi notification hiện tại
+## 10. Hanh vi thong bao hien tai
 
-1. Khi tạo lịch DAT mới:
-   - Cloud Function `notifyDatScheduleCreated` gửi push tới thiết bị admin/staff đã đăng ký token
+### Khi mode = realtime
 
-2. Lúc `21:00` và `22:00`:
-   - frontend đang mở sẽ hiện reminder nội bộ cho admin
-   - Cloud Function `sendPendingDatReminder` có thể gửi push nhắc nếu còn lịch `pending`
+1. Admin/staff mo app
+2. App lang nghe `schedules` bang `onSnapshot`
+3. Neu co lich DAT moi duoc them, app hien toast trong app
+4. Neu browser da cap quyen Notification, app hien browser notification local
 
-### Giới hạn hiện tại
+### Khi mode = fcm
 
-- Nếu app web đang đóng hoàn toàn, reminder client-side `21:00` / `22:00` sẽ không tự chạy
-- Push khi app đóng chỉ hoạt động nếu:
-  - token đã được lưu
-  - Cloud Functions đã deploy
-  - browser cho phép notification
-- Nếu app chưa được cấp quyền Notification thì Cloud Function vẫn gửi nhưng thiết bị sẽ không hiện thông báo
-- Không có backend scheduler riêng ngoài Firebase Cloud Functions
+1. User bam `Bat push notification`
+2. App xin quyen Notification
+3. App register service worker
+4. App lay FCM token va luu vao `notificationTokens`
+5. Cloud Function `notifyDatScheduleCreated` gui push khi co lich DAT moi
+6. Cloud Function `sendPendingDatReminder` gui nhac vao 21:00 va 22:00 neu con lich pending
 
-## 8. Test checklist
+### Khi mode = off
 
-1. Login bằng `admin`
-2. Dashboard hiển thị nút `Bật thông báo`
-3. Bấm `Bật thông báo`
-4. Cho phép notification
-5. Firestore xuất hiện document trong `notificationTokens`
-6. Tạo lịch DAT mới
-7. Cloud Function `notifyDatScheduleCreated` chạy
-8. Thiết bị admin/staff nhận notification `Lịch DAT mới`
-9. Login bằng `viewer`
-10. `viewer` không thấy nút `Bật thông báo`
-11. Nếu token invalid thì function không crash và token bị disable
-12. Reload app vẫn hoạt động bình thường
-13. Trên GitHub Pages, service worker register đúng `./firebase-messaging-sw.js`
+- App van dang nhap va doc du lieu binh thuong
+- Khong khoi dong notification listener
+- Khong bat FCM
+- Khong hien nut bat thong bao
+
+## 11. Gioi han hien tai
+
+- Mode `realtime` chi thong bao khi web app dang mo
+- Mode `realtime` khong can Blaze va khong can Cloud Functions
+- Mode `fcm` chi nen bat khi da co Blaze, VAPID key va Functions
+- Neu app web dang dong hoan toan thi mode `realtime` khong tu chay thong bao
+- Neu browser chua duoc cap quyen Notification thi cloud function van gui, nhung thiet bi se khong hien thong bao
+- Khong co backend scheduler rieng ngoai Firebase Cloud Functions
+- `FUNCTIONS_ENABLED=false` co the duoc dung trong Cloud Functions de tat trigger ma khong can xoa code
+
+## 12. Test checklist
+
+### mode = off
+
+1. App van dang nhap duoc
+2. Khong hien nut bat thong bao
+3. Khong co loi console
+4. Khong chay FCM
+5. Khong chay realtime notification listener
+
+### mode = realtime
+
+1. Khong can VAPID key
+2. Khong can Cloud Functions
+3. Admin/staff mo app, tao lich DAT tu tab khac thi nhan thong bao trong app
+4. Mo app len thay card DAT pending
+5. Viewer khong thay nut thong bao
+
+### mode = fcm
+
+1. Neu `vapidKey` rong, bam bat push thi app bao loi than thien
+2. Neu `vapidKey` co gia tri, app lay token va luu `notificationTokens`
+3. Khong anh huong card DAT pending
+4. Foreground message van hien toast khi app dang mo
+
+### chung
+
+1. Khong co thong bao trung nhieu lan khi render lai
+2. Logout thi unsubscribe listener
+3. Login user khac thi listener duoc reset theo role moi
+4. Trinh duyet GitHub Pages van register dung `./firebase-messaging-sw.js` khi o mode `fcm`

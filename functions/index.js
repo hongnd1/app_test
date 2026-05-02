@@ -10,6 +10,7 @@ const messaging = admin.messaging();
 const REGION = "asia-southeast1";
 const TIME_ZONE = "Asia/Ho_Chi_Minh";
 const APP_URL = "https://hongnd1.github.io/app_test/";
+const FUNCTIONS_ENABLED = process.env.FUNCTIONS_ENABLED !== "false";
 const ALLOWED_NOTIFICATION_ROLES = new Set(["admin", "staff"]);
 
 function chunk(array, size) {
@@ -101,6 +102,13 @@ exports.notifyDatScheduleCreated = onDocumentCreated(
     region: REGION,
   },
   async (event) => {
+    if (!FUNCTIONS_ENABLED) {
+      logger.info("Functions disabled by FUNCTIONS_ENABLED=false", {
+        functionName: "notifyDatScheduleCreated",
+      });
+      return;
+    }
+
     const schedule = event.data?.data();
     const scheduleId = event.params.scheduleId;
 
@@ -168,6 +176,13 @@ exports.sendPendingDatReminder = onSchedule(
     region: REGION,
   },
   async () => {
+    if (!FUNCTIONS_ENABLED) {
+      logger.info("Functions disabled by FUNCTIONS_ENABLED=false", {
+        functionName: "sendPendingDatReminder",
+      });
+      return;
+    }
+
     const today = new Date().toISOString().slice(0, 10);
     const snapshot = await db.collection("schedules").where("date", ">=", today).get();
     const pendingSchedules = snapshot.docs

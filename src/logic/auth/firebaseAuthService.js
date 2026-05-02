@@ -10,12 +10,25 @@ import { auth, firestore } from "../../data/config/firebase.js";
 import { authValidator } from "./authValidator.js";
 
 const ROLE_LABELS = {
-  admin: "Quản trị viên",
-  staff: "Nhân sự",
-  viewer: "Chỉ xem",
+  host: "Chu he thong",
+  admin: "Quan tri vien",
+  staff: "Nhan su",
+  viewer: "Chi xem",
 };
 
 const ROLE_PERMISSIONS = {
+  host: {
+    canCreateStudent: false,
+    canEditStudent: false,
+    canEditStudentDat: false,
+    canDeleteStudent: false,
+    canViewSensitiveStudentInfo: false,
+    canCreateSchedule: false,
+    canDeleteSchedule: false,
+    canAssignMeetingLocation: false,
+    canEnablePushNotifications: true,
+    canSetNotificationMode: true,
+  },
   admin: {
     canCreateStudent: true,
     canEditStudent: true,
@@ -26,6 +39,7 @@ const ROLE_PERMISSIONS = {
     canDeleteSchedule: true,
     canAssignMeetingLocation: true,
     canEnablePushNotifications: true,
+    canSetNotificationMode: false,
   },
   staff: {
     canCreateStudent: false,
@@ -37,6 +51,7 @@ const ROLE_PERMISSIONS = {
     canDeleteSchedule: false,
     canAssignMeetingLocation: false,
     canEnablePushNotifications: true,
+    canSetNotificationMode: false,
   },
   viewer: {
     canCreateStudent: false,
@@ -48,6 +63,7 @@ const ROLE_PERMISSIONS = {
     canDeleteSchedule: false,
     canAssignMeetingLocation: false,
     canEnablePushNotifications: false,
+    canSetNotificationMode: false,
   },
 };
 
@@ -89,7 +105,7 @@ function buildSession(user, profile) {
   return {
     uid: user.uid,
     email: user.email ?? "",
-    displayName: profile?.displayName?.trim() || user.displayName || user.email || "Người dùng",
+    displayName: profile?.displayName?.trim() || user.displayName || user.email || "Nguoi dung",
     role,
     roleLabel: getRoleLabel(role),
     permissions: getPermissions(role),
@@ -98,16 +114,16 @@ function buildSession(user, profile) {
 
 function toLoginMessage(error) {
   const messages = {
-    "auth/invalid-email": "Email không đúng định dạng.",
-    "auth/missing-password": "Vui lòng nhập mật khẩu.",
-    "auth/invalid-credential": "Email hoặc mật khẩu không chính xác.",
-    "auth/user-not-found": "Tài khoản không tồn tại.",
-    "auth/wrong-password": "Email hoặc mật khẩu không chính xác.",
-    "auth/too-many-requests": "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau.",
-    "auth/network-request-failed": "Không thể kết nối đến Firebase. Kiểm tra mạng và cấu hình hosting.",
+    "auth/invalid-email": "Email khong dung dinh dang.",
+    "auth/missing-password": "Vui long nhap mat khau.",
+    "auth/invalid-credential": "Email hoac mat khau khong chinh xac.",
+    "auth/user-not-found": "Tai khoan khong ton tai.",
+    "auth/wrong-password": "Email hoac mat khau khong chinh xac.",
+    "auth/too-many-requests": "Dang nhap that bai qua nhieu lan. Vui long thu lai sau.",
+    "auth/network-request-failed": "Khong the ket noi den Firebase. Kiem tra mang va cau hinh hosting.",
   };
 
-  return messages[error?.code] ?? "Không thể đăng nhập bằng Firebase Authentication.";
+  return messages[error?.code] ?? "Khong the dang nhap bang Firebase Authentication.";
 }
 
 export const firebaseAuthService = {
