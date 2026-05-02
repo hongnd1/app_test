@@ -24,16 +24,16 @@ function normalizeStudents(students) {
 }
 
 export const studentService = {
-  getAllStudents() {
-    return normalizeStudents(studentRepository.getAll());
+  async getAllStudents() {
+    return normalizeStudents(await studentRepository.getAll());
   },
 
-  getStudentById(studentId) {
-    return this.getAllStudents().find((student) => student.id === studentId) ?? null;
+  async getStudentById(studentId) {
+    return (await this.getAllStudents()).find((student) => student.id === studentId) ?? null;
   },
 
-  createStudent(data) {
-    const students = this.getAllStudents();
+  async createStudent(data) {
+    const students = await this.getAllStudents();
     const student = createStudentModel({
       ...data,
       id: generateStudentId(students),
@@ -44,12 +44,12 @@ export const studentService = {
       return { success: false, message: validation.message };
     }
 
-    studentRepository.saveAll([...students, student]);
+    await studentRepository.save(student);
     return { success: true, student };
   },
 
-  updateStudent(studentId, data) {
-    const students = this.getAllStudents();
+  async updateStudent(studentId, data) {
+    const students = await this.getAllStudents();
     const currentStudent = students.find((student) => student.id === studentId);
 
     if (!currentStudent) {
@@ -67,15 +67,12 @@ export const studentService = {
       return { success: false, message: validation.message };
     }
 
-    studentRepository.saveAll(
-      students.map((student) => (student.id === studentId ? updatedStudent : student)),
-    );
+    await studentRepository.save(updatedStudent);
 
     return { success: true, student: updatedStudent };
   },
 
-  deleteStudent(studentId) {
-    const students = this.getAllStudents();
-    studentRepository.saveAll(students.filter((student) => student.id !== studentId));
+  async deleteStudent(studentId) {
+    await studentRepository.remove(studentId);
   },
 };

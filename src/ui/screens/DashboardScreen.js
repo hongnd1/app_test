@@ -171,27 +171,36 @@ function createScheduleForm(student, students, selectedDate, handlers) {
 
   const form = wrapper.querySelector("form");
   const messageElement = wrapper.querySelector(".form-message");
+  const submitButton = wrapper.querySelector('button[type="submit"]');
   wrapper.querySelector(".icon-button").addEventListener("click", handlers.onClose);
   wrapper.querySelector(".secondary-button").addEventListener("click", handlers.onClose);
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const formData = new FormData(form);
-    const result = handlers.onSave({
-      studentId: formData.get("studentId"),
-      date: formData.get("date"),
-      startTime: formData.get("startTime"),
-      endTime: formData.get("endTime"),
-      note: formData.get("note"),
-    });
+    submitButton.disabled = true;
+    try {
+      const formData = new FormData(form);
+      const result = await handlers.onSave({
+        studentId: formData.get("studentId"),
+        date: formData.get("date"),
+        startTime: formData.get("startTime"),
+        endTime: formData.get("endTime"),
+        note: formData.get("note"),
+      });
 
-    if (!result.success) {
+      if (!result.success) {
+        messageElement.hidden = false;
+        messageElement.textContent = result.message;
+        return;
+      }
+
+      messageElement.hidden = true;
+    } catch (error) {
       messageElement.hidden = false;
-      messageElement.textContent = result.message;
-      return;
+      messageElement.textContent = "Không thể lưu lịch học.";
+    } finally {
+      submitButton.disabled = false;
     }
-
-    messageElement.hidden = true;
   });
 
   return wrapper;

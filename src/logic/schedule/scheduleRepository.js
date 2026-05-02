@@ -1,21 +1,18 @@
-﻿import { mockSchedules } from "../../data/mock/schedules.js";
+import { mockSchedules } from "../../data/mock/schedules.js";
+import { createCollectionStore } from "../../data/firebase/collectionStore.js";
 
-const STORAGE_KEY = "blx_schedules";
-
-function initialize() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockSchedules));
-  }
-}
+const store = createCollectionStore("schedules", mockSchedules);
 
 export const scheduleRepository = {
-  getAll() {
-    initialize();
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+  async getAll() {
+    return store.getAll();
   },
 
-  saveAll(schedules) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(schedules));
+  async save(schedule) {
+    return store.save(schedule);
+  },
+
+  async remove(scheduleId) {
+    return store.remove(scheduleId);
   },
 };

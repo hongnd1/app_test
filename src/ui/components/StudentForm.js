@@ -72,35 +72,43 @@ export function createStudentForm(student, mode, handlers) {
   const form = wrapper.querySelector("form");
   const messageElement = wrapper.querySelector(".form-message");
   const licenseSelect = wrapper.querySelector('[name="loaiBang"]');
+  const submitButton = wrapper.querySelector('button[type="submit"]');
 
   licenseSelect.value = student?.loaiBang ?? "B tự động";
 
   closeButton.addEventListener("click", handlers.onClose);
   cancelButton.addEventListener("click", handlers.onClose);
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    submitButton.disabled = true;
+    try {
+      const formData = new FormData(form);
+      const payload = {
+        ten: formData.get("ten"),
+        cccd: formData.get("cccd"),
+        loaiBang: formData.get("loaiBang"),
+        tongHocPhi: Number(formData.get("tongHocPhi")),
+        daNop: Number(formData.get("daNop")),
+        soKmDAT: Number(formData.get("soKmDAT")),
+        daHocLyThuyet: form.querySelector('[name="daHocLyThuyet"]').checked,
+        daHocSaHinh: form.querySelector('[name="daHocSaHinh"]').checked,
+      };
 
-    const formData = new FormData(form);
-    const payload = {
-      ten: formData.get("ten"),
-      cccd: formData.get("cccd"),
-      loaiBang: formData.get("loaiBang"),
-      tongHocPhi: Number(formData.get("tongHocPhi")),
-      daNop: Number(formData.get("daNop")),
-      soKmDAT: Number(formData.get("soKmDAT")),
-      daHocLyThuyet: form.querySelector('[name="daHocLyThuyet"]').checked,
-      daHocSaHinh: form.querySelector('[name="daHocSaHinh"]').checked,
-    };
+      const result = await handlers.onSave(payload);
+      if (!result.success) {
+        messageElement.hidden = false;
+        messageElement.textContent = result.message;
+        return;
+      }
 
-    const result = handlers.onSave(payload);
-    if (!result.success) {
+      messageElement.hidden = true;
+    } catch (error) {
       messageElement.hidden = false;
-      messageElement.textContent = result.message;
-      return;
+      messageElement.textContent = "Không thể lưu dữ liệu.";
+    } finally {
+      submitButton.disabled = false;
     }
-
-    messageElement.hidden = true;
   });
 
   return wrapper;

@@ -31,21 +31,29 @@
   const form = container.querySelector("form");
   const messageElement = container.querySelector(".form-message");
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    try {
+      const result = await onLogin({
+        username: form.username.value,
+        password: form.password.value,
+      });
 
-    const result = onLogin({
-      username: form.username.value,
-      password: form.password.value,
-    });
+      if (!result.success) {
+        messageElement.hidden = false;
+        messageElement.textContent = result.message;
+        return;
+      }
 
-    if (!result.success) {
+      messageElement.hidden = true;
+    } catch (error) {
       messageElement.hidden = false;
-      messageElement.textContent = result.message;
-      return;
+      messageElement.textContent = "Không thể đăng nhập lúc này.";
+    } finally {
+      submitButton.disabled = false;
     }
-
-    messageElement.hidden = true;
   });
 
   root.appendChild(container);

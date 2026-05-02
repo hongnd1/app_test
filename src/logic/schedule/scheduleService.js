@@ -47,12 +47,12 @@ function getCalendarDays(month, year, schedules, selectedDate) {
 }
 
 export const scheduleService = {
-  getAllSchedules() {
-    return normalizeSchedules(scheduleRepository.getAll());
+  async getAllSchedules() {
+    return normalizeSchedules(await scheduleRepository.getAll());
   },
 
-  createSchedule(payload, student) {
-    const schedules = this.getAllSchedules();
+  async createSchedule(payload, student) {
+    const schedules = await this.getAllSchedules();
     const schedule = createScheduleModel({
       id: generateScheduleId(schedules),
       studentId: student?.id,
@@ -69,17 +69,15 @@ export const scheduleService = {
       return { success: false, message: validation.message };
     }
 
-    scheduleRepository.saveAll([...schedules, schedule]);
+    await scheduleRepository.save(schedule);
     return { success: true, schedule };
   },
 
-  deleteSchedule(scheduleId) {
-    const schedules = this.getAllSchedules();
-    scheduleRepository.saveAll(schedules.filter((item) => item.id !== scheduleId));
+  async deleteSchedule(scheduleId) {
+    await scheduleRepository.remove(scheduleId);
   },
 
-  getScheduleBuckets({ month, year, selectedDate }) {
-    const schedules = this.getAllSchedules();
+  getScheduleBuckets(schedules, { month, year, selectedDate }) {
     const today = todayString(0);
     const tomorrow = todayString(1);
 
