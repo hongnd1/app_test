@@ -51,6 +51,20 @@ function createBottomTabButton(label, key, activeKey, onClick) {
   return button;
 }
 
+function createToast(message, onClose) {
+  const toast = document.createElement("div");
+  toast.className = "toast-notification";
+  toast.innerHTML = `
+    <div>
+      <strong>${message.title || "Thông báo"}</strong>
+      <p>${message.body || ""}</p>
+    </div>
+    <button type="button" class="icon-button" aria-label="Đóng">×</button>
+  `;
+  toast.querySelector("button").addEventListener("click", onClose);
+  return toast;
+}
+
 function createProgressBar(item, onClick) {
   const button = document.createElement("button");
   button.type = "button";
@@ -687,13 +701,27 @@ export function DashboardScreen(root, props) {
         <h1>Quản lý đào tạo</h1>
         <span class="topbar__meta">Xin chào ${props.session.displayName} · ${props.session.roleLabel}</span>
       </div>
-      <button class="logout-button" type="button" aria-label="Đăng xuất">Đăng xuất</button>
+      <div class="toolbar-actions">
+        ${
+          props.permissions.canEnablePushNotifications
+            ? `<button class="secondary-button" type="button" data-action="enable-notification">${
+                props.notificationPermission === "granted" ? "Đã bật thông báo" : "Bật thông báo"
+              }</button>`
+            : ""
+        }
+        <button class="logout-button" type="button" aria-label="Đăng xuất">Đăng xuất</button>
+      </div>
     </header>
     <section class="tab-content"></section>
     <nav class="bottom-tabbar"></nav>
   `;
 
   container.querySelector(".logout-button").addEventListener("click", props.onLogout);
+  const topEnableButton = container.querySelector('[data-action="enable-notification"]');
+  if (topEnableButton) {
+    topEnableButton.disabled = props.notificationPermission === "granted";
+    topEnableButton.addEventListener("click", props.onRequestNotificationPermission);
+  }
 
   const content = container.querySelector(".tab-content");
   if (props.permissions.canAssignMeetingLocation && props.reminderSummary.hasPending) {
@@ -733,5 +761,9 @@ export function DashboardScreen(root, props) {
         onOpenScheduleTab: props.onOpenScheduleTab,
       }),
     );
+  }
+
+  if (props.toastMessage) {
+    root.appendChild(createToast(props.toastMessage, props.onDismissToastMessage));
   }
 }

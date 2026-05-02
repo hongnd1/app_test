@@ -8,8 +8,10 @@ App hiện dùng:
 - Firestore collection `students`
 - Firestore collection `schedules`
 - Firestore document `users/{uid}` để lấy `displayName` và `role`
+- Firestore collection `notificationTokens` để lưu token FCM của từng thiết bị
+- Firebase Cloud Functions để gửi push notification
 
-App chạy được với static hosting như GitHub Pages vì đang dùng Firebase CDN modules.
+App frontend vẫn chạy bằng static hosting như GitHub Pages vì đang dùng Firebase CDN modules.
 
 ## 1. Bật Firebase Authentication
 
@@ -31,7 +33,7 @@ Document ID:
 
 - chính là `uid` của Firebase Auth user
 
-Ví dụ dữ liệu:
+Ví dụ:
 
 ```json
 {
@@ -40,10 +42,11 @@ Ví dụ dữ liệu:
 }
 ```
 
-Các role đang hỗ trợ:
+Các role app hiện hỗ trợ:
 
-- `admin`: toàn quyền
-- `staff`: chỉ tạo lịch, chỉ xem tên học viên và loại bằng, sửa `soKmDAT`
+- `admin`
+- `staff`
+- `viewer`
 
 ## 3. Firestore Rules đề xuất
 
@@ -62,7 +65,7 @@ service cloud.firestore {
     function userRole() {
       return isSignedIn() && userDoc().exists()
         ? userDoc().data.role
-        : "staff";
+        : "viewer";
     }
 
     function canReadAppData() {
@@ -99,48 +102,25 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+
+    match /notificationTokens/{tokenId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read: if request.auth != null
+        && (
+          resource.data.uid == request.auth.uid
+          || userRole() == "admin"
+        );
+
+      allow update, delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
   }
 }
 ```
 
-## 4. Tạo tài khoản test
-
-Ví dụ bạn có thể tạo 2 user trong Firebase Authentication:
-
-1. `admin@example.com`
-2. `staff@example.com`
-
-Sau đó tạo 2 document:
-
-`users/<uid-admin>`
-
-```json
-{
-  "displayName": "Admin Test",
-  "role": "admin"
-}
-```
-
-`users/<uid-staff>`
-
-```json
-{
-  "displayName": "Staff Test",
-  "role": "staff"
-}
-```
-
-## 5. Lưu ý khi deploy GitHub Pages
-
-- Firebase project phải thêm domain GitHub Pages của bạn vào `Authentication > Settings > Authorized domains`
-- Ví dụ:
-  `hongnd1.github.io`
-
-Nếu không thêm domain này, login bằng Firebase Auth sẽ thất bại trên GitHub Pages.
-
-## 6. Dữ liệu students
-
-App đang dùng các field:
+## 4. Dữ liệu students
 
 ```json
 {
@@ -158,9 +138,7 @@ App đang dùng các field:
 }
 ```
 
-## 7. Dữ liệu schedules
-
-App đang dùng các field:
+## 5. Dữ liệu schedules
 
 ```json
 {
@@ -176,20 +154,22 @@ App đang dùng các field:
   "startTime": "06:00",
   "endTime": "11:30",
   "note": "Chuẩn bị xe sân A",
-  "meetingLocation": "Cổng trường lái xe số 2",
-  "meetingLocationStatus": "confirmed",
+  "meetingLocation": "",
+  "meetingLocationStatus": "pending",
   "teacherReminderNote": "Cần hẹn địa điểm chạy DAT với học viên.",
-  "teacherConfirmed": true,
+  "teacherConfirmed": false,
   "reminderCreatedAt": "2026-05-02T08:30:00.000Z",
-  "reminderUpdatedAt": "2026-05-02T20:45:00.000Z",
-  "meetingNote": "Có mặt trước 15 phút, mang theo CCCD",
-  "notificationStatus": "ready",
-  "notifiedAt": "2026-05-02T09:00:00.000Z",
-  "createdAt": "2026-05-02T08:30:00.000Z"
+  "reminderUpdatedAt": "2026-05-02T08:30:00.000Z",
+  "meetingNote": "",
+  "notificationStatus": "pending",
+  "notifiedAt": null,
+  "datCreatedNotificationSentAt": null,
+  "createdAt": "2026-05-02T08:30:00.000Z",
+  "updatedAt": "2026-05-02T08:30:00.000Z"
 }
 ```
 
-## 8. Quy tắc ca DAT
+## 6. Quy tắc ca DAT
 
 App chỉ cho tạo lịch theo 3 ca cố định:
 
@@ -197,39 +177,137 @@ App chỉ cho tạo lịch theo 3 ca cố định:
 - `Ca chiều`: `13:00 - 17:00`
 - `Ca tối`: `18:00 - 21:00`
 
-## 9. Reminder nội bộ cho admin
+## 7. FCM + Cloud Functions Notification
 
-Khi tạo lịch DAT mới, app tự gán:
+### Frontend
+
+Frontend chỉ:
+
+- xin quyền Notification
+- lấy FCM token
+- lưu token vào Firestore collection `notificationTokens`
+
+Frontend không gửi FCM trực tiếp và không chứa server key.
+
+### Bật Firebase Cloud Messaging
+
+Trong Firebase Console:
+
+1. Vào `Project settings`
+2. Chọn tab `Cloud Messaging`
+3. Bật / cấu hình Web Push nếu chưa có
+
+### Lấy VAPID key
+
+Trong `Firebase Console > Project settings > Cloud Messaging > Web configuration`
+
+- tạo hoặc xem `Web Push certificates`
+- copy `Key pair`
+- dán public key vào:
+
+`src/logic/notification/notificationService.js`
+
+Tại hằng số:
+
+`VAPID_KEY_PLACEHOLDER`
+
+### notificationTokens
+
+Mỗi thiết bị được bật thông báo sẽ tạo một document:
+
+Collection:
+
+`notificationTokens`
+
+Ví dụ:
 
 ```json
 {
-  "meetingLocation": "",
-  "meetingLocationStatus": "pending",
-  "teacherReminderNote": "Cần hẹn địa điểm chạy DAT với học viên.",
-  "teacherConfirmed": false,
-  "reminderCreatedAt": "ISO_DATE",
-  "reminderUpdatedAt": "ISO_DATE"
+  "uid": "firebase-auth-uid",
+  "email": "admin@example.com",
+  "displayName": "Admin Test",
+  "role": "admin",
+  "token": "FCM_DEVICE_TOKEN",
+  "platform": "web",
+  "userAgent": "Mozilla/5.0 ...",
+  "enabled": true,
+  "createdAt": "serverTimestamp",
+  "updatedAt": "serverTimestamp"
 }
 ```
 
-Admin sẽ thấy reminder trong dashboard cho các lịch DAT còn `pending`.
+### Cloud Functions deploy
 
-Khi app đang mở và đang có phiên `admin`, web sẽ nhắc lúc:
+```bash
+cd functions
+npm install
+firebase deploy --only functions
+```
 
-- `21:00`
-- `22:00`
+### Authorized domain cho GitHub Pages
 
-Nếu browser đã cấp quyền Notification API, app sẽ hiện browser notification ngoài popup trong app.
+Trong Firebase Console:
 
-## 10. Giới hạn hiện tại của notification
+`Authentication > Settings > Authorized domains`
 
-Tuy nhiên, để học viên nhận **push notification thật sự** trên điện thoại, bạn vẫn cần thêm:
+Thêm domain GitHub Pages của bạn, ví dụ:
 
-- app/web riêng cho học viên
-- Firebase Cloud Messaging
-- token thiết bị của học viên
-- service gửi notification
+- `hongnd1.github.io`
 
-Repo hiện tại chưa có hạ tầng đó.
+### URL app cho notification click
 
-Nếu trình duyệt hoặc app web đang đóng hoàn toàn thì static web **không thể tự chạy lịch nhắc** vì không có backend scheduler. Đây là giới hạn đúng theo mô hình hiện tại.
+Trong:
+
+`functions/index.js`
+
+Hiện đang có:
+
+```js
+const APP_URL = "https://hongnd1.github.io/app_test/";
+```
+
+Nếu URL production khác, cần sửa lại trước khi deploy functions.
+
+### iPhone / iOS
+
+iPhone/iPad chỉ nhận Web Push tốt khi:
+
+- iOS/iPadOS hỗ trợ Web Push
+- user thêm web app vào Home Screen
+- mở app từ icon Home Screen
+- bấm `Bật thông báo`
+
+### Hành vi notification hiện tại
+
+1. Khi tạo lịch DAT mới:
+   - Cloud Function `notifyDatScheduleCreated` gửi push tới thiết bị admin/staff đã đăng ký token
+
+2. Lúc `21:00` và `22:00`:
+   - frontend đang mở sẽ hiện reminder nội bộ cho admin
+   - Cloud Function `sendPendingDatReminder` có thể gửi push nhắc nếu còn lịch `pending`
+
+### Giới hạn hiện tại
+
+- Nếu app web đang đóng hoàn toàn, reminder client-side `21:00` / `22:00` sẽ không tự chạy
+- Push khi app đóng chỉ hoạt động nếu:
+  - token đã được lưu
+  - Cloud Functions đã deploy
+  - browser cho phép notification
+- Nếu app chưa được cấp quyền Notification thì Cloud Function vẫn gửi nhưng thiết bị sẽ không hiện thông báo
+- Không có backend scheduler riêng ngoài Firebase Cloud Functions
+
+## 8. Test checklist
+
+1. Login bằng `admin`
+2. Dashboard hiển thị nút `Bật thông báo`
+3. Bấm `Bật thông báo`
+4. Cho phép notification
+5. Firestore xuất hiện document trong `notificationTokens`
+6. Tạo lịch DAT mới
+7. Cloud Function `notifyDatScheduleCreated` chạy
+8. Thiết bị admin/staff nhận notification `Lịch DAT mới`
+9. Login bằng `viewer`
+10. `viewer` không thấy nút `Bật thông báo`
+11. Nếu token invalid thì function không crash và token bị disable
+12. Reload app vẫn hoạt động bình thường
+13. Trên GitHub Pages, service worker register đúng `./firebase-messaging-sw.js`

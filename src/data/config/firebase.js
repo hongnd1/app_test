@@ -3,7 +3,7 @@ import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyB6Tqgj1PqF8wcC4jAZU4A048mLgv4CGTk",
   authDomain: "blx-app-348b4.firebaseapp.com",
   projectId: "blx-app-348b4",

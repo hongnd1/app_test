@@ -11,6 +11,8 @@ export function createScheduleModel(data) {
   const meetingLocationStatus = data.meetingLocationStatus ?? (meetingLocation ? "confirmed" : "pending");
   const teacherConfirmed =
     data.teacherConfirmed === undefined ? meetingLocationStatus === "confirmed" : Boolean(data.teacherConfirmed);
+  const createdAt = data.createdAt ?? new Date().toISOString();
+  const updatedAt = data.updatedAt ?? createdAt;
 
   return {
     id: data.id,
@@ -36,6 +38,8 @@ export function createScheduleModel(data) {
     meetingNote: data.meetingNote?.trim() ?? "",
     notificationStatus: data.notificationStatus ?? "pending",
     notifiedAt: data.notifiedAt ?? null,
-    createdAt: data.createdAt ?? new Date().toISOString(),
+    datCreatedNotificationSentAt: data.datCreatedNotificationSentAt ?? null,
+    createdAt,
+    updatedAt,
   };
 }

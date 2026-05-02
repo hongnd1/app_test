@@ -35,6 +35,7 @@ function createReminderNotification(hour, schedules) {
       total === 1
         ? `Còn 1 lịch DAT chưa hẹn địa điểm. Vào dashboard để kiểm tra.`
         : `Còn ${total} lịch DAT chưa hẹn địa điểm. Vào dashboard để kiểm tra.`,
+    channel: "schedule-reminder",
     tag: `dat-reminder-${new Date().toISOString().slice(0, 10)}-${hour}`,
     hour,
     schedules,

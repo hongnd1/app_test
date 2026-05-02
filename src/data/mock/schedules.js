@@ -18,6 +18,8 @@ export const mockSchedules = [
     teacherConfirmed: false,
     reminderCreatedAt: new Date().toISOString(),
     reminderUpdatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "DAT002",
@@ -38,5 +40,7 @@ export const mockSchedules = [
     teacherConfirmed: false,
     reminderCreatedAt: new Date().toISOString(),
     reminderUpdatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];

@@ -22,6 +22,7 @@ const defaultPermissions = {
   canCreateSchedule: false,
   canDeleteSchedule: false,
   canAssignMeetingLocation: false,
+  canEnablePushNotifications: false,
 };
 
 const state = {
@@ -33,7 +34,8 @@ const state = {
   loadError: "",
   loginMessage: "",
   popupNotification: null,
-  notificationPermission: notificationService.getPermission(),
+  toastMessage: null,
+  notificationPermission: notificationService.getNotificationPermissionStatus(),
   ui: {
     activeTab: "progress",
     scheduleListTab: "all",
@@ -61,6 +63,8 @@ const state = {
 let pendingSearchRefocus = false;
 let currentLoadId = 0;
 let stopReminderScheduler = null;
+let stopForegroundMessages = null;
+let stopNotificationBridge = null;
 
 function getTodayString() {
   return new Date().toISOString().slice(0, 10);
@@ -92,12 +96,20 @@ function clearDataState() {
   state.isLoadingData = false;
   state.loadError = "";
   state.popupNotification = null;
+  state.toastMessage = null;
 }
 
 function stopReminderLoop() {
   if (stopReminderScheduler) {
     stopReminderScheduler();
     stopReminderScheduler = null;
+  }
+}
+
+function stopForegroundMessageListener() {
+  if (stopForegroundMessages) {
+    stopForegroundMessages();
+    stopForegroundMessages = null;
   }
 }
 
@@ -283,6 +295,7 @@ async function handleLogin(credentials) {
 
 async function handleLogout() {
   try {
+    await notificationService.disableCurrentDeviceToken(state.session);
     await firebaseAuthService.logout();
   } catch (error) {
     console.error("Không thể đăng xuất.", error);
@@ -294,13 +307,22 @@ function handleOpenScheduleTab() {
 }
 
 async function handleRequestNotificationPermission() {
-  const permission = await notificationService.requestPermission();
-  state.notificationPermission = permission;
+  const result = await notificationService.requestNotificationPermissionAndSaveToken(state.session);
+  state.notificationPermission = notificationService.getNotificationPermissionStatus();
+  state.toastMessage = {
+    title: result.success ? "Thông báo" : "Không thể bật thông báo",
+    body: result.message,
+  };
   render();
 }
 
 function handleDismissPopupNotification() {
   state.popupNotification = null;
+  render();
+}
+
+function handleDismissToastMessage() {
+  state.toastMessage = null;
   render();
 }
 
@@ -638,6 +660,8 @@ function render() {
     onRequestNotificationPermission: handleRequestNotificationPermission,
     popupNotification: state.popupNotification,
     onDismissPopupNotification: handleDismissPopupNotification,
+    toastMessage: state.toastMessage,
+    onDismissToastMessage: handleDismissToastMessage,
   });
 
   refocusSearchIfNeeded();
@@ -646,6 +670,7 @@ function render() {
 firebaseAuthService.subscribe(async ({ session, error }) => {
   currentLoadId += 1;
   stopReminderLoop();
+  stopForegroundMessageListener();
 
   if (error) {
     console.error("Không thể đồng bộ Firebase Authentication.", error);
@@ -661,7 +686,7 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   state.session = session;
   state.authReady = true;
   state.loginMessage = "";
-  state.notificationPermission = notificationService.getPermission();
+  state.notificationPermission = notificationService.getNotificationPermissionStatus();
   resetUiState();
 
   if (!session) {
@@ -673,11 +698,24 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   await loadDashboardData();
   syncReminderScheduler();
   maybeTriggerScheduleReminder(new Date());
+  stopForegroundMessages = notificationService.listenForegroundMessages((notification) => {
+    state.toastMessage = {
+      title: notification.title,
+      body: notification.body,
+    };
+    render();
+  });
 });
 
-notificationService.subscribe((notification) => {
-  state.popupNotification = notification;
-  render();
-});
+if (!stopNotificationBridge) {
+  stopNotificationBridge = notificationService.subscribe((notification) => {
+    if (notification.channel === "foreground-fcm") {
+      return;
+    }
+
+    state.popupNotification = notification;
+    render();
+  });
+}
 
 render();

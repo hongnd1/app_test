@@ -12,6 +12,7 @@ import { authValidator } from "./authValidator.js";
 const ROLE_LABELS = {
   admin: "Quản trị viên",
   staff: "Nhân sự",
+  viewer: "Chỉ xem",
 };
 
 const ROLE_PERMISSIONS = {
@@ -24,6 +25,7 @@ const ROLE_PERMISSIONS = {
     canCreateSchedule: true,
     canDeleteSchedule: true,
     canAssignMeetingLocation: true,
+    canEnablePushNotifications: true,
   },
   staff: {
     canCreateStudent: false,
@@ -34,6 +36,18 @@ const ROLE_PERMISSIONS = {
     canCreateSchedule: true,
     canDeleteSchedule: false,
     canAssignMeetingLocation: false,
+    canEnablePushNotifications: true,
+  },
+  viewer: {
+    canCreateStudent: false,
+    canEditStudent: false,
+    canEditStudentDat: false,
+    canDeleteStudent: false,
+    canViewSensitiveStudentInfo: false,
+    canCreateSchedule: false,
+    canDeleteSchedule: false,
+    canAssignMeetingLocation: false,
+    canEnablePushNotifications: false,
   },
 };
 
@@ -49,7 +63,7 @@ function ensurePersistence() {
 
 function normalizeRole(role) {
   const normalized = String(role ?? "").trim().toLowerCase();
-  return ROLE_PERMISSIONS[normalized] ? normalized : "staff";
+  return ROLE_PERMISSIONS[normalized] ? normalized : "viewer";
 }
 
 function getPermissions(role) {
@@ -57,7 +71,7 @@ function getPermissions(role) {
 }
 
 function getRoleLabel(role) {
-  return ROLE_LABELS[normalizeRole(role)] ?? ROLE_LABELS.staff;
+  return ROLE_LABELS[normalizeRole(role)] ?? ROLE_LABELS.viewer;
 }
 
 async function getUserProfile(uid) {

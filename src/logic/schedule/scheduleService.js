@@ -74,6 +74,8 @@ export const scheduleService = {
       teacherConfirmed: false,
       reminderCreatedAt: new Date().toISOString(),
       reminderUpdatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
 
     const validation = scheduleValidator.validate(schedule, student, schedules);
@@ -109,6 +111,7 @@ export const scheduleService = {
       meetingNote: payload.meetingNote,
       notificationStatus: nextStatus === "confirmed" ? "ready" : "pending",
       notifiedAt: nextStatus === "confirmed" ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
     });
 
     await scheduleRepository.save(updatedSchedule);

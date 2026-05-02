@@ -255,6 +255,26 @@ button { cursor: pointer; border: none; }
 .reminder-popup-panel {
   width: min(640px, 100%);
 }
+.toast-notification {
+  position: fixed;
+  right: 16px;
+  bottom: 96px;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.toast-notification p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
 .form-grid, .toggle-grid, .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .toggle-card { display: flex; gap: 12px; align-items: center; }
 .empty-state { border-radius: var(--radius-xl); padding: 36px; text-align: center; }
