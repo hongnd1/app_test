@@ -14,13 +14,14 @@ App hien dang dung:
 
 Frontend van chay duoc tren static hosting nhu GitHub Pages vi dang dung Firebase CDN modules.
 
-## 1. Bat Firebase Authentication
+## 1. Bật Firebase Authentication
 
 Trong Firebase Console:
 
 1. Vao `Authentication`
 2. Chon `Sign-in method`
-3. Bat `Email/Password`
+3. Bật `Email/Password`
+4. Bật thêm `Google` nếu muốn dùng đăng nhập Google song song với email/password
 
 Sau do tao user trong tab `Users`.
 

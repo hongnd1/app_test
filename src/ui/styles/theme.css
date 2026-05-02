@@ -61,7 +61,7 @@ button { cursor: pointer; border: none; }
   padding: 14px 16px;
   color: var(--text);
 }
-.primary-button, .secondary-button, .ghost-danger-button, .icon-button, .icon-logout-button, .bottom-tab, .logout-button {
+.primary-button, .secondary-button, .ghost-danger-button, .icon-button, .icon-logout-button, .bottom-tab, .logout-button, .notification-bell {
   border-radius: 999px;
   padding: 12px 18px;
   font-weight: 700;
@@ -92,10 +92,45 @@ button { cursor: pointer; border: none; }
 }
 .compact-topbar {
   border-radius: var(--radius-xl);
-  padding: 16px 18px;
+  padding: 14px 18px;
+}
+.sticky-topbar {
+  position: sticky;
+  top: 16px;
+  z-index: 25;
+}
+.topbar-user {
+  display: grid;
+  gap: 4px;
 }
 .topbar__meta { font-size: 0.9rem; }
 .topbar__copyright { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.notification-bell {
+  position: relative;
+  min-width: 52px;
+  height: 52px;
+  padding: 0 14px;
+  background: rgba(24, 49, 83, 0.08);
+  color: var(--text);
+}
+.notification-bell__icon {
+  font-size: 1.2rem;
+}
+.notification-bell__badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  font-size: 0.72rem;
+}
 .tab-content, .tab-panel, .schedule-list, .progress-grid, .schedule-overview-grid { display: grid; gap: 14px; }
 .section-heading, .toolbar__content {
   background: rgba(255, 255, 255, 0.74);
@@ -226,7 +261,7 @@ button { cursor: pointer; border: none; }
   border-radius: 999px;
   padding: 8px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   z-index: 30;
 }
@@ -275,11 +310,62 @@ button { cursor: pointer; border: none; }
   margin: 6px 0 0;
   color: var(--muted);
 }
+.login-actions {
+  display: grid;
+  gap: 10px;
+}
 .topbar-mode-field {
   min-width: 180px;
 }
 .topbar-mode-field select {
   min-width: 180px;
+}
+.notification-center-panel {
+  width: min(760px, 100%);
+}
+.notification-list {
+  display: grid;
+  gap: 12px;
+}
+.notification-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(24, 49, 83, 0.08);
+  padding: 14px 16px;
+}
+.notification-item p,
+.notification-item span {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+.notification-item.is-unread {
+  border-color: rgba(31, 142, 241, 0.32);
+  background: rgba(235, 245, 255, 0.92);
+}
+.notification-item__state {
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--secondary);
+}
+.settings-tab,
+.settings-grid {
+  display: grid;
+  gap: 14px;
+}
+.settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.settings-panel {
+  width: 100%;
+}
+.settings-action-button {
+  align-self: end;
 }
 .form-grid, .toggle-grid, .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .toggle-card { display: flex; gap: 12px; align-items: center; }
@@ -297,7 +383,8 @@ button { cursor: pointer; border: none; }
   .filter-bar,
   .student-list,
   .progress-grid,
-  .schedule-overview-grid { grid-template-columns: 1fr; }
+  .schedule-overview-grid,
+  .settings-grid { grid-template-columns: 1fr; }
 
   .student-card__footer,
   .student-card__header,

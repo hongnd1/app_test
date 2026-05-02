@@ -1,3 +1,4 @@
+import { notificationConfig } from "../../data/config/notificationConfig.js";
 import { getScheduleSlotList } from "../../logic/schedule/scheduleSlots.js";
 import { createFilterBar } from "../components/FilterBar.js";
 import { createStudentCard } from "../components/StudentCard.js";
@@ -6,18 +7,18 @@ import { createStudentForm } from "../components/StudentForm.js";
 
 function monthLabel(month, year) {
   const names = [
-    "Thang Mot",
-    "Thang Hai",
-    "Thang Ba",
-    "Thang Tu",
-    "Thang Nam",
-    "Thang Sau",
-    "Thang Bay",
-    "Thang Tam",
-    "Thang Chin",
-    "Thang Muoi",
-    "Thang Muoi Mot",
-    "Thang Muoi Hai",
+    "Tháng Một",
+    "Tháng Hai",
+    "Tháng Ba",
+    "Tháng Tư",
+    "Tháng Năm",
+    "Tháng Sáu",
+    "Tháng Bảy",
+    "Tháng Tám",
+    "Tháng Chín",
+    "Tháng Mười",
+    "Tháng Mười Một",
+    "Tháng Mười Hai",
   ];
 
   return `${names[month]} ${year}`;
@@ -25,13 +26,13 @@ function monthLabel(month, year) {
 
 function weekdayLabel(dateString) {
   const names = [
-    "Chu nhat",
-    "Thu hai",
-    "Thu ba",
-    "Thu tu",
-    "Thu nam",
-    "Thu sau",
-    "Thu bay",
+    "Chủ nhật",
+    "Thứ hai",
+    "Thứ ba",
+    "Thứ tư",
+    "Thứ năm",
+    "Thứ sáu",
+    "Thứ bảy",
   ];
   const date = new Date(`${dateString}T00:00:00`);
   return names[date.getDay()];
@@ -39,7 +40,7 @@ function weekdayLabel(dateString) {
 
 function fullDateLabel(dateString) {
   const date = new Date(`${dateString}T00:00:00`);
-  return `${weekdayLabel(dateString)}, ngay ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  return `${weekdayLabel(dateString)}, ngày ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
 }
 
 function createBottomTabButton(label, key, activeKey, onClick) {
@@ -51,15 +52,36 @@ function createBottomTabButton(label, key, activeKey, onClick) {
   return button;
 }
 
+function notificationModeOptionLabel(mode) {
+  const labels = {
+    off: "Tắt",
+    realtime: "Realtime",
+    fcm: "FCM",
+  };
+
+  return labels[mode] ?? mode;
+}
+
+function notificationPermissionLabel(status) {
+  const labels = {
+    granted: "Đã cho phép",
+    default: "Chưa quyết định",
+    denied: "Đã chặn",
+    unsupported: "Không hỗ trợ",
+  };
+
+  return labels[status] ?? status;
+}
+
 function createToast(message, onClose) {
   const toast = document.createElement("div");
   toast.className = "toast-notification";
   toast.innerHTML = `
     <div>
-      <strong>${message.title || "Thong bao"}</strong>
+      <strong>${message.title || "Thông báo"}</strong>
       <p>${message.body || ""}</p>
     </div>
-    <button type="button" class="icon-button" aria-label="Dong">x</button>
+    <button type="button" class="icon-button" aria-label="Đóng">×</button>
   `;
   toast.querySelector("button").addEventListener("click", onClose);
   return toast;
@@ -72,76 +94,64 @@ function createProgressBar(item, onClick) {
   button.innerHTML = `
     <div class="progress-row__header">
       <strong>${item.label}</strong>
-      <span>${item.count}/${item.total} hoc vien</span>
+      <span>${item.count}/${item.total} học viên</span>
     </div>
     <div class="progress-track">
       <span class="progress-fill" style="width:${item.percent}%"></span>
     </div>
-    <p>${item.percent}% hoan thanh</p>
+    <p>${item.percent}% hoàn thành</p>
   `;
   button.addEventListener("click", () => onClick(item.key));
   return button;
 }
 
-function createReminderPanel(props) {
-  const section = document.createElement("section");
-  section.className = "panel reminder-panel";
-  section.innerHTML = `
+function createNotificationCenter(props) {
+  const panel = document.createElement("section");
+  panel.className = "panel notification-center-panel";
+  panel.innerHTML = `
     <div class="panel__header">
       <div>
-        <p class="eyebrow">Nhac hen DAT</p>
-        <h2>${props.reminderSummary.pendingCount} lich can hen dia diem</h2>
+        <p class="eyebrow">Thông báo</p>
+        <h2>Bạn đang có ${props.unreadNotificationCount} thông báo chưa đọc</h2>
       </div>
       <div class="toolbar-actions">
-        ${
-          props.showNotificationButton && props.supportsBrowserNotifications
-            ? `<button type="button" class="secondary-button" data-action="enable-notification">${props.notificationButtonLabel}</button>`
-            : ""
-        }
-        <button type="button" class="primary-button" data-action="open-schedule">Mo lich can xu ly</button>
+        <button type="button" class="secondary-button" data-action="mark-all">Đánh dấu đã đọc</button>
+        <button type="button" class="icon-button" data-action="close" aria-label="Đóng">×</button>
       </div>
     </div>
-    <div class="schedule-list"></div>
+    <div class="notification-list"></div>
   `;
 
-  const list = section.querySelector(".schedule-list");
-  props.reminderSummary.pendingSchedules.slice(0, 5).forEach((schedule) => {
-    const item = document.createElement("div");
-    item.className = "schedule-card";
-    item.innerHTML = `
-      <div class="schedule-card__header">
-        <div>
-          <p class="eyebrow">${schedule.slotLabel || schedule.time}</p>
-          <h3>${schedule.studentName}</h3>
-          <p class="muted">${schedule.licenseType} · ${schedule.date} · ${schedule.time}</p>
-        </div>
-        ${
-          props.canAssignMeetingLocation
-            ? '<button type="button" class="secondary-button compact-button" data-action="confirm-meeting">Da hen dia diem</button>'
-            : ""
-        }
-      </div>
-      <p class="schedule-note"><strong>Trang thai:</strong> ${schedule.meetingLocationStatus || "pending"}</p>
-      <p class="schedule-note">${schedule.teacherReminderNote || "Can hen dia diem chay DAT voi hoc vien."}</p>
+  const list = panel.querySelector(".notification-list");
+  if (!props.notifications.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state compact-empty";
+    empty.innerHTML = `
+      <h3>Chưa có thông báo</h3>
+      <p>Thông báo mới sẽ hiển thị tại đây.</p>
     `;
-
-    const actionButton = item.querySelector('[data-action="confirm-meeting"]');
-    if (actionButton) {
-      actionButton.addEventListener("click", () => props.onOpenMeetingLocationForm(schedule.id));
-    }
-
-    list.appendChild(item);
-  });
-
-  section.querySelector('[data-action="open-schedule"]').addEventListener("click", props.onOpenScheduleTab);
-
-  const enableButton = section.querySelector('[data-action="enable-notification"]');
-  if (enableButton) {
-    enableButton.disabled = props.notificationPermission === "granted";
-    enableButton.addEventListener("click", props.onRequestNotificationPermission);
+    list.appendChild(empty);
+  } else {
+    props.notifications.forEach((notification) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = `notification-item ${notification.readAt ? "" : "is-unread"}`;
+      item.innerHTML = `
+        <div>
+          <strong>${notification.title}</strong>
+          <p>${notification.body}</p>
+          <span>${new Date(notification.createdAt).toLocaleString("vi-VN")}</span>
+        </div>
+        <span class="notification-item__state">${notification.readAt ? "Đã đọc" : "Mới"}</span>
+      `;
+      item.addEventListener("click", () => props.onOpenNotification(notification.id, notification.scheduleId));
+      list.appendChild(item);
+    });
   }
 
-  return section;
+  panel.querySelector('[data-action="close"]').addEventListener("click", props.onClose);
+  panel.querySelector('[data-action="mark-all"]').addEventListener("click", props.onMarkAllNotificationsRead);
+  return panel;
 }
 
 function createNotificationPopup(notification, handlers) {
@@ -151,15 +161,15 @@ function createNotificationPopup(notification, handlers) {
     <section class="panel reminder-popup-panel">
       <div class="panel__header">
         <div>
-          <p class="eyebrow">Nhac viec</p>
+          <p class="eyebrow">Nhắc việc</p>
           <h2>${notification.title}</h2>
         </div>
-        <button class="icon-button" type="button" aria-label="Dong">x</button>
+        <button class="icon-button" type="button" aria-label="Đóng">×</button>
       </div>
       <p class="hero-copy">${notification.body}</p>
       <div class="form-actions">
-        <button type="button" class="secondary-button" data-action="dismiss">Dong</button>
-        <button type="button" class="primary-button" data-action="open-schedule">Mo dashboard lich</button>
+        <button type="button" class="secondary-button" data-action="dismiss">Đóng</button>
+        <button type="button" class="primary-button" data-action="open-schedule">Mở dashboard lịch</button>
       </div>
     </section>
   `;
@@ -176,10 +186,10 @@ function createScheduleCard(schedule, actions, permissions) {
 
   const actionButtons = [];
   if (permissions.canAssignMeetingLocation) {
-    actionButtons.push('<button class="secondary-button compact-button" type="button" data-action="meeting">Dia diem hen</button>');
+    actionButtons.push('<button class="secondary-button compact-button" type="button" data-action="meeting">Địa điểm hẹn</button>');
   }
   if (permissions.canDeleteSchedule) {
-    actionButtons.push('<button class="ghost-danger-button compact-button" type="button" data-action="delete">Xoa</button>');
+    actionButtons.push('<button class="ghost-danger-button compact-button" type="button" data-action="delete">Xóa</button>');
   }
 
   card.innerHTML = `
@@ -193,11 +203,11 @@ function createScheduleCard(schedule, actions, permissions) {
         ${actionButtons.join("")}
       </div>
     </div>
-    <p class="schedule-note">${schedule.note || "Chua co ghi chu"}</p>
+    <p class="schedule-note">${schedule.note || "Chưa có ghi chú"}</p>
     ${
       permissions.canAssignMeetingLocation && schedule.meetingLocation
-        ? `<p class="schedule-note"><strong>Diem hen:</strong> ${schedule.meetingLocation}</p>
-           <p class="schedule-note"><strong>Thong bao:</strong> ${schedule.meetingNote || "Da chuan bi thong bao cho hoc vien"}</p>`
+        ? `<p class="schedule-note"><strong>Điểm hẹn:</strong> ${schedule.meetingLocation}</p>
+           <p class="schedule-note"><strong>Thông báo:</strong> ${schedule.meetingNote || "Đã chuẩn bị thông báo cho học viên"}</p>`
         : ""
     }
   `;
@@ -233,7 +243,7 @@ function renderScheduleList(title, schedules, actions, permissions, subtitle = "
   if (!schedules.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state compact-empty";
-    empty.innerHTML = `<p>Chua co lich trong muc nay.</p>`;
+    empty.innerHTML = `<p>Chưa có lịch trong mục này.</p>`;
     list.appendChild(empty);
   } else {
     schedules.forEach((schedule) => list.appendChild(createScheduleCard(schedule, actions, permissions)));
@@ -269,39 +279,39 @@ function createScheduleForm(student, students, selectedDate, handlers) {
   wrapper.innerHTML = `
     <div class="panel__header">
       <div>
-        <p class="eyebrow">Dat lich DAT</p>
-        <h2>${student?.ten ?? "Chon hoc vien cho ngay da chon"}</h2>
+        <p class="eyebrow">Đặt lịch DAT</p>
+        <h2>${student?.ten ?? "Chọn học viên cho ngày đã chọn"}</h2>
       </div>
-      <button class="icon-button" type="button" aria-label="Dong">x</button>
+      <button class="icon-button" type="button" aria-label="Đóng">×</button>
     </div>
     <form class="student-form">
       <div class="form-grid">
         <label class="field">
-          <span>Hoc vien</span>
+          <span>Học viên</span>
           <select name="studentId" required>
-            <option value="">Chon hoc vien da hoan thanh ly thuyet</option>
+            <option value="">Chọn học viên đã hoàn thành lý thuyết</option>
             ${studentOptions}
           </select>
         </label>
         <label class="field">
-          <span>Ngay hoc DAT</span>
+          <span>Ngày học DAT</span>
           <input type="date" name="date" value="${selectedDate}" required />
         </label>
         <label class="field">
-          <span>Ca hoc</span>
+          <span>Ca học</span>
           <select name="slotKey" required>
             ${slotOptions}
           </select>
         </label>
         <label class="field">
-          <span>Ghi chu</span>
-          <input type="text" name="note" placeholder="Vi du: Chuan bi xe san A" />
+          <span>Ghi chú</span>
+          <input type="text" name="note" placeholder="Ví dụ: Chuẩn bị xe sân A" />
         </label>
       </div>
       <p class="form-message" hidden></p>
       <div class="form-actions">
-        <button type="button" class="secondary-button">Huy</button>
-        <button type="submit" class="primary-button">Luu lich DAT</button>
+        <button type="button" class="secondary-button">Hủy</button>
+        <button type="submit" class="primary-button">Lưu lịch DAT</button>
       </div>
     </form>
   `;
@@ -333,7 +343,7 @@ function createScheduleForm(student, students, selectedDate, handlers) {
       messageElement.hidden = true;
     } catch {
       messageElement.hidden = false;
-      messageElement.textContent = "Khong the luu lich hoc.";
+      messageElement.textContent = "Không thể lưu lịch học.";
     } finally {
       submitButton.disabled = false;
     }
@@ -348,56 +358,56 @@ function createMeetingLocationForm(schedule, handlers) {
   wrapper.innerHTML = `
     <div class="panel__header">
       <div>
-        <p class="eyebrow">Dia diem hen</p>
+        <p class="eyebrow">Địa điểm hẹn</p>
         <h2>${schedule.studentName}</h2>
       </div>
-      <button class="icon-button" type="button" aria-label="Dong">x</button>
+      <button class="icon-button" type="button" aria-label="Đóng">×</button>
     </div>
     <form class="student-form">
       <div class="form-grid">
         <label class="field">
-          <span>Loai bang</span>
+          <span>Loại bằng</span>
           <input type="text" value="${schedule.licenseType}" readonly />
         </label>
         <label class="field">
-          <span>Khung gio</span>
+          <span>Khung giờ</span>
           <input type="text" value="${schedule.slotLabel || schedule.time}" readonly />
         </label>
         <label class="field">
-          <span>Dia diem hen</span>
+          <span>Địa điểm hẹn</span>
           <input type="text" name="meetingLocation" value="${schedule.meetingLocation ?? ""}" />
         </label>
         <label class="field">
-          <span>Noi dung thong bao</span>
+          <span>Nội dung thông báo</span>
           <input
             type="text"
             name="meetingNote"
             value="${schedule.meetingNote ?? ""}"
-            placeholder="Vi du: Co mat truoc 15 phut, mang theo CCCD"
+            placeholder="Ví dụ: Có mặt trước 15 phút, mang theo CCCD"
           />
         </label>
         <label class="field">
-          <span>Ghi chu nhac GV/admin</span>
+          <span>Ghi chú nhắc GV/admin</span>
           <input
             type="text"
             name="teacherReminderNote"
             value="${schedule.teacherReminderNote ?? ""}"
-            placeholder="Vi du: Goi hoc vien truoc 20:00"
+            placeholder="Ví dụ: Gọi học viên trước 20:00"
           />
         </label>
         <label class="field">
-          <span>Trang thai hen dia diem</span>
+          <span>Trạng thái hẹn địa điểm</span>
           <select name="meetingLocationStatus">
-            <option value="confirmed" ${schedule.meetingLocationStatus === "confirmed" ? "selected" : ""}>Da hen</option>
-            <option value="pending" ${schedule.meetingLocationStatus === "pending" ? "selected" : ""}>Chua hen</option>
-            <option value="cancelled" ${schedule.meetingLocationStatus === "cancelled" ? "selected" : ""}>Huy</option>
+            <option value="confirmed" ${schedule.meetingLocationStatus === "confirmed" ? "selected" : ""}>Đã hẹn</option>
+            <option value="pending" ${schedule.meetingLocationStatus === "pending" ? "selected" : ""}>Chưa hẹn</option>
+            <option value="cancelled" ${schedule.meetingLocationStatus === "cancelled" ? "selected" : ""}>Hủy</option>
           </select>
         </label>
       </div>
       <p class="form-message" hidden></p>
       <div class="form-actions">
-        <button type="button" class="secondary-button">Huy</button>
-        <button type="submit" class="primary-button">Luu dia diem hen</button>
+        <button type="button" class="secondary-button">Hủy</button>
+        <button type="submit" class="primary-button">Lưu địa điểm hẹn</button>
       </div>
     </form>
   `;
@@ -430,7 +440,7 @@ function createMeetingLocationForm(schedule, handlers) {
       messageElement.hidden = true;
     } catch {
       messageElement.hidden = false;
-      messageElement.textContent = "Khong the luu dia diem hen.";
+      messageElement.textContent = "Không thể lưu địa điểm hẹn.";
     } finally {
       submitButton.disabled = false;
     }
@@ -446,8 +456,8 @@ function createCalendar(props) {
     <div class="calendar-header">
       <strong>${monthLabel(props.filters.scheduleMonth, props.filters.scheduleYear)}</strong>
       <div class="calendar-nav">
-        <button type="button" class="icon-logout-button calendar-nav-button" aria-label="Thang truoc"><</button>
-        <button type="button" class="icon-logout-button calendar-nav-button" aria-label="Thang sau">></button>
+        <button type="button" class="icon-logout-button calendar-nav-button" aria-label="Tháng trước">‹</button>
+        <button type="button" class="icon-logout-button calendar-nav-button" aria-label="Tháng sau">›</button>
       </div>
     </div>
     <div class="calendar-weekdays">
@@ -493,8 +503,8 @@ function renderProgressTab(container, props) {
   section.innerHTML = `
     <div class="section-heading">
       <div>
-        <p class="eyebrow">Tien do hoc vien</p>
-        <h2>Cham de chuyen sang danh sach da loc</h2>
+        <p class="eyebrow">Tiến độ học viên</p>
+        <h2>Chạm để chuyển sang danh sách đã lọc</h2>
       </div>
     </div>
   `;
@@ -506,10 +516,10 @@ function renderProgressTab(container, props) {
   totalButton.className = "progress-row total-row";
   totalButton.innerHTML = `
     <div class="progress-row__header">
-      <strong>Tong so hoc vien</strong>
-      <span>${props.totalStudents} hoc vien</span>
+      <strong>Tổng số học viên</strong>
+      <span>${props.totalStudents} học viên</span>
     </div>
-    <p>Mo tab danh sach hoc vien</p>
+    <p>Mở tab danh sách học viên</p>
   `;
   totalButton.addEventListener("click", props.onOpenStudentTab);
   quick.appendChild(totalButton);
@@ -524,8 +534,8 @@ function renderScheduleTab(container, props) {
   section.innerHTML = `
     <div class="section-heading">
       <div>
-        <p class="eyebrow">Lich hoc</p>
-        <h2>Lich chay DAT cua hoc vien</h2>
+        <p class="eyebrow">Lịch học</p>
+        <h2>Lịch chạy DAT của học viên</h2>
       </div>
     </div>
   `;
@@ -538,14 +548,14 @@ function renderScheduleTab(container, props) {
   const overview = document.createElement("div");
   overview.className = "schedule-overview-grid";
   overview.append(
-    renderScheduleList("Hom nay", props.scheduleBuckets.today, scheduleActions, props.permissions, fullDateLabel(props.scheduleBuckets.todayDate)),
-    renderScheduleList("Ngay mai", props.scheduleBuckets.tomorrow, scheduleActions, props.permissions, fullDateLabel(props.scheduleBuckets.tomorrowDate)),
+    renderScheduleList("Hôm nay", props.scheduleBuckets.today, scheduleActions, props.permissions, fullDateLabel(props.scheduleBuckets.todayDate)),
+    renderScheduleList("Ngày mai", props.scheduleBuckets.tomorrow, scheduleActions, props.permissions, fullDateLabel(props.scheduleBuckets.tomorrowDate)),
   );
   section.appendChild(overview);
 
   section.appendChild(createCalendar(props));
   const selectedSection = renderScheduleList(
-    `Lich ngay ${props.filters.selectedScheduleDate}`,
+    `Lịch ngày ${props.filters.selectedScheduleDate}`,
     props.scheduleBuckets.selectedDay,
     scheduleActions,
     props.permissions,
@@ -555,7 +565,7 @@ function renderScheduleTab(container, props) {
     const addButton = document.createElement("button");
     addButton.type = "button";
     addButton.className = "primary-button compact-button schedule-add-button";
-    addButton.textContent = "Them lich hoc";
+    addButton.textContent = "Thêm lịch học";
     addButton.addEventListener("click", () => props.onOpenScheduleDayForm(props.filters.selectedScheduleDate));
     selectedSection.querySelector(".section-heading").appendChild(addButton);
   }
@@ -595,15 +605,15 @@ function renderStudentsTab(container, props) {
   section.innerHTML = `
     <div class="toolbar compact-toolbar sticky-toolbar">
       <div class="toolbar__content">
-        <p class="eyebrow">Danh sach hoc vien</p>
+        <p class="eyebrow">Danh sách học viên</p>
         <h2>${props.activeFilterLabel}</h2>
-        <p>${props.students.length} / ${props.totalStudents} hoc vien dang hien thi</p>
+        <p>${props.students.length} / ${props.totalStudents} học viên đang hiển thị</p>
       </div>
       <div class="toolbar-actions">
         <button class="secondary-button" type="button" data-action="toggle-filter">
-          ${props.filters.showStudentFilters ? "An tim kiem" : "Tim kiem hoc vien"}
+          ${props.filters.showStudentFilters ? "Ẩn tìm kiếm" : "Tìm kiếm học viên"}
         </button>
-        ${props.permissions.canCreateStudent ? '<button class="primary-button" type="button" data-action="create-student">Them hoc vien</button>' : ""}
+        ${props.permissions.canCreateStudent ? '<button class="primary-button" type="button" data-action="create-student">Thêm học viên</button>' : ""}
       </div>
     </div>
   `;
@@ -629,8 +639,8 @@ function renderStudentsTab(container, props) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.innerHTML = `
-      <h3>Khong co hoc vien phu hop</h3>
-      <p>Thu doi bo loc hoac chon nhom khac.</p>
+      <h3>Không có học viên phù hợp</h3>
+      <p>Thử đổi bộ lọc hoặc chọn nhóm khác.</p>
     `;
     list.appendChild(empty);
   } else {
@@ -702,84 +712,187 @@ function renderStudentsTab(container, props) {
   container.appendChild(section);
 }
 
+function renderSettingsTab(container, props) {
+  const section = document.createElement("section");
+  section.className = "tab-panel active settings-tab";
+
+  const summary = document.createElement("section");
+  summary.className = "panel settings-panel";
+  summary.innerHTML = `
+    <div class="panel__header">
+      <div>
+        <p class="eyebrow">Trung tâm thông báo</p>
+        <h2>Bạn đang có ${props.unreadNotificationCount} thông báo chưa đọc</h2>
+      </div>
+      <button type="button" class="secondary-button" data-action="open-notifications">Mở danh sách thông báo</button>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-card">
+        <span>Chế độ thông báo</span>
+        <strong>${props.notificationModeLabel}</strong>
+      </div>
+      <div class="detail-card">
+        <span>Quyền trình duyệt</span>
+        <strong>${notificationPermissionLabel(props.notificationPermission)}</strong>
+      </div>
+    </div>
+    <p class="hero-copy">Các thiết lập thông báo, cài đặt thiết bị và đăng xuất được gom tại tab này.</p>
+  `;
+  summary.querySelector('[data-action="open-notifications"]').addEventListener("click", props.onToggleNotificationCenter);
+  section.appendChild(summary);
+
+  if (props.reminderSummary.hasPending) {
+    const pendingPanel = document.createElement("section");
+    pendingPanel.className = "panel settings-panel";
+    pendingPanel.innerHTML = `
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Lịch DAT tồn đọng</p>
+          <h2>Có ${props.reminderSummary.pendingCount} lịch cần hẹn địa điểm</h2>
+        </div>
+        <button type="button" class="primary-button" data-action="open-schedule">Mở tab lịch</button>
+      </div>
+      <div class="schedule-list"></div>
+    `;
+
+    const list = pendingPanel.querySelector(".schedule-list");
+    props.reminderSummary.pendingSchedules.slice(0, 5).forEach((schedule) => {
+      const item = document.createElement("div");
+      item.className = "schedule-card";
+      item.innerHTML = `
+        <div class="schedule-card__header">
+          <div>
+            <p class="eyebrow">${schedule.slotLabel || schedule.time}</p>
+            <h3>${schedule.studentName}</h3>
+            <p class="muted">${schedule.licenseType} · ${schedule.date} · ${schedule.time}</p>
+          </div>
+          ${
+            props.permissions.canAssignMeetingLocation
+              ? '<button type="button" class="secondary-button compact-button" data-action="meeting">Đã hẹn địa điểm</button>'
+              : ""
+          }
+        </div>
+        <p class="schedule-note">${schedule.teacherReminderNote || "Cần hẹn địa điểm chạy DAT với học viên."}</p>
+      `;
+
+      const actionButton = item.querySelector('[data-action="meeting"]');
+      if (actionButton) {
+        actionButton.addEventListener("click", () => props.onOpenMeetingLocationForm(schedule.id));
+      }
+
+      list.appendChild(item);
+    });
+
+    pendingPanel.querySelector('[data-action="open-schedule"]').addEventListener("click", props.onOpenScheduleTab);
+    section.appendChild(pendingPanel);
+  }
+
+  const notificationSettings = document.createElement("section");
+  notificationSettings.className = "panel settings-panel";
+  notificationSettings.innerHTML = `
+    <div class="panel__header">
+      <div>
+        <p class="eyebrow">Cài đặt thông báo</p>
+        <h2>Thiết bị hiện tại</h2>
+      </div>
+    </div>
+    <div class="settings-grid">
+      ${
+        props.showNotificationModeSelector
+          ? `
+            <label class="field">
+              <span>Notification mode</span>
+              <select data-action="notification-mode">
+                ${props.notificationModeOptions
+                  .map(
+                    (mode) => `
+                      <option value="${mode}" ${mode === props.notificationMode ? "selected" : ""}>
+                        ${notificationModeOptionLabel(mode)}
+                      </option>
+                    `,
+                  )
+                  .join("")}
+              </select>
+            </label>
+          `
+          : ""
+      }
+      ${
+        props.showNotificationButton
+          ? `<button type="button" class="secondary-button settings-action-button" data-action="enable-notification">${props.notificationButtonLabel}</button>`
+          : `<div class="detail-card"><span>Thông báo</span><strong>Đang tắt theo cấu hình hiện tại</strong></div>`
+      }
+    </div>
+    <p class="hero-copy">${
+      notificationConfig.enablePendingDatCard
+        ? "Card lịch DAT tồn đọng đang được bật để bạn xử lý các lịch chưa hẹn địa điểm."
+        : "Card lịch DAT tồn đọng hiện đang tắt."
+    }</p>
+  `;
+
+  const modeSelect = notificationSettings.querySelector('[data-action="notification-mode"]');
+  if (modeSelect) {
+    modeSelect.addEventListener("change", (event) => props.onChangeNotificationMode(event.target.value));
+  }
+
+  const enableButton = notificationSettings.querySelector('[data-action="enable-notification"]');
+  if (enableButton) {
+    enableButton.disabled = props.notificationPermission === "granted";
+    enableButton.addEventListener("click", props.onRequestNotificationPermission);
+  }
+  section.appendChild(notificationSettings);
+
+  const accountPanel = document.createElement("section");
+  accountPanel.className = "panel settings-panel";
+  accountPanel.innerHTML = `
+    <div class="panel__header">
+      <div>
+        <p class="eyebrow">Cài đặt tài khoản</p>
+        <h2>${props.session.displayName}</h2>
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-card">
+        <span>Email</span>
+        <strong>${props.session.email || "Chưa có email"}</strong>
+      </div>
+      <div class="detail-card">
+        <span>Chức vụ</span>
+        <strong>${props.session.roleLabel}</strong>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="logout-button" data-action="logout">Đăng xuất</button>
+    </div>
+  `;
+  accountPanel.querySelector('[data-action="logout"]').addEventListener("click", props.onLogout);
+  section.appendChild(accountPanel);
+
+  container.appendChild(section);
+}
+
 export function DashboardScreen(root, props) {
   const container = document.createElement("main");
   container.className = "dashboard-screen tabbed-dashboard bottom-nav-layout";
 
   container.innerHTML = `
-    <header class="topbar compact-topbar">
-      <div>
-        <p class="eyebrow">BLX Student Manager</p>
-        <p class="topbar__copyright">Ban quyen duoc thiet ke boi Nguyen Dinh Hong</p>
-        <h1>Quan ly dao tao</h1>
-        <span class="topbar__meta">Xin chao ${props.session.displayName} · ${props.session.roleLabel}</span>
-        <span class="topbar__meta">Mode thong bao: ${props.notificationModeLabel}</span>
+    <header class="topbar compact-topbar sticky-topbar">
+      <div class="topbar-user">
+        <strong>${props.session.displayName}</strong>
+        <span class="topbar__meta">${props.session.roleLabel}</span>
       </div>
-      <div class="toolbar-actions">
-        ${
-          props.showNotificationModeSelector
-            ? `
-              <label class="field topbar-mode-field">
-                <span>Notification mode</span>
-                <select data-action="notification-mode">
-                  ${props.notificationModeOptions
-                    .map(
-                      (mode) => `
-                        <option value="${mode}" ${mode === props.notificationMode ? "selected" : ""}>
-                          ${mode}
-                        </option>
-                      `,
-                    )
-                    .join("")}
-                </select>
-              </label>
-            `
-            : ""
-        }
-        ${
-          props.showNotificationButton
-            ? `<button class="secondary-button" type="button" data-action="enable-notification">${props.notificationButtonLabel}</button>`
-            : ""
-        }
-        <button class="logout-button" type="button" aria-label="Dang xuat">Dang xuat</button>
-      </div>
+      <button class="notification-bell" type="button" aria-label="Mở thông báo" data-action="toggle-notifications">
+        <span class="notification-bell__icon">🔔</span>
+        ${props.unreadNotificationCount ? `<span class="notification-bell__badge">${props.unreadNotificationCount}</span>` : ""}
+      </button>
     </header>
     <section class="tab-content"></section>
     <nav class="bottom-tabbar"></nav>
   `;
 
-  container.querySelector(".logout-button").addEventListener("click", props.onLogout);
-
-  const modeSelect = container.querySelector('[data-action="notification-mode"]');
-  if (modeSelect) {
-    modeSelect.addEventListener("change", (event) => {
-      props.onChangeNotificationMode(event.target.value);
-    });
-  }
-
-  const topEnableButton = container.querySelector('[data-action="enable-notification"]');
-  if (topEnableButton) {
-    topEnableButton.disabled = props.notificationPermission === "granted";
-    topEnableButton.addEventListener("click", props.onRequestNotificationPermission);
-  }
+  container.querySelector('[data-action="toggle-notifications"]').addEventListener("click", props.onToggleNotificationCenter);
 
   const content = container.querySelector(".tab-content");
-  if (props.showReminderPanel) {
-    content.appendChild(
-      createReminderPanel({
-        reminderSummary: props.reminderSummary,
-        supportsBrowserNotifications: props.supportsBrowserNotifications,
-        notificationPermission: props.notificationPermission,
-        notificationButtonLabel: props.notificationButtonLabel,
-        showNotificationButton: props.showNotificationButton,
-        canAssignMeetingLocation: props.permissions.canAssignMeetingLocation,
-        onRequestNotificationPermission: props.onRequestNotificationPermission,
-        onOpenScheduleTab: props.onOpenScheduleTab,
-        onOpenMeetingLocationForm: props.onOpenMeetingLocationForm,
-      }),
-    );
-  }
-
   if (props.filters.activeTab === "progress") {
     renderProgressTab(content, props);
   }
@@ -789,15 +902,34 @@ export function DashboardScreen(root, props) {
   if (props.filters.activeTab === "students") {
     renderStudentsTab(content, props);
   }
+  if (props.filters.activeTab === "settings") {
+    renderSettingsTab(content, props);
+  }
 
   const bottomBar = container.querySelector(".bottom-tabbar");
   bottomBar.append(
-    createBottomTabButton("Tien do", "progress", props.filters.activeTab, props.onChangeTab),
-    createBottomTabButton("Lich hoc", "schedule", props.filters.activeTab, props.onChangeTab),
-    createBottomTabButton("Hoc vien", "students", props.filters.activeTab, props.onChangeTab),
+    createBottomTabButton("Tiến độ", "progress", props.filters.activeTab, props.onChangeTab),
+    createBottomTabButton("Lịch học", "schedule", props.filters.activeTab, props.onChangeTab),
+    createBottomTabButton("Học viên", "students", props.filters.activeTab, props.onChangeTab),
+    createBottomTabButton("Cài đặt", "settings", props.filters.activeTab, props.onChangeTab),
   );
 
   root.appendChild(container);
+
+  if (props.filters.showNotificationCenter) {
+    const modal = document.createElement("div");
+    modal.className = "modal-shell";
+    modal.appendChild(
+      createNotificationCenter({
+        notifications: props.notifications,
+        unreadNotificationCount: props.unreadNotificationCount,
+        onClose: props.onToggleNotificationCenter,
+        onMarkAllNotificationsRead: props.onMarkAllNotificationsRead,
+        onOpenNotification: props.onOpenNotification,
+      }),
+    );
+    root.appendChild(modal);
+  }
 
   if (props.popupNotification) {
     root.appendChild(

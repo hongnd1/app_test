@@ -46,11 +46,11 @@ function getVapidKey() {
 }
 
 function buildFriendlyNotification(payload) {
-  const title = payload?.notification?.title || payload?.data?.title || "Thong bao moi";
+  const title = payload?.notification?.title || payload?.data?.title || "Thông báo mới";
   const body =
     payload?.notification?.body ||
     payload?.data?.body ||
-    "Ban co thong bao moi tu BLX Student Manager.";
+    "Bạn có thông báo mới từ BLX Student Manager.";
 
   return {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -192,35 +192,35 @@ export const notificationService = {
 
   async requestNotificationPermissionAndSaveToken(session) {
     if (!session?.uid) {
-      return { success: false, message: "Ban can dang nhap truoc khi bat thong bao." };
+      return { success: false, message: "Bạn cần đăng nhập trước khi bật thông báo." };
     }
 
     const supported = await this.getMessagingSupportStatus();
     if (!supported) {
-      return { success: false, message: "Trinh duyet nay chua ho tro thong bao." };
+      return { success: false, message: "Trình duyệt này chưa hỗ trợ thông báo." };
     }
 
     if (!["host", "admin", "staff"].includes(session.role)) {
-      return { success: false, message: "Tai khoan nay khong duoc phep bat thong bao." };
+      return { success: false, message: "Tài khoản này không được phép bật thông báo." };
     }
 
     const vapidKey = getVapidKey();
     if (!vapidKey) {
-      return { success: false, message: "Chua cau hinh VAPID key. Vui long cap nhat notificationConfig." };
+      return { success: false, message: "Chưa cấu hình VAPID key. Vui lòng cập nhật notificationConfig." };
     }
 
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       return {
         success: false,
-        message: "Trinh duyet dang chan thong bao. Vui long bat lai trong cai dat trinh duyet.",
+        message: "Trình duyệt đang chặn thông báo. Vui lòng bật lại trong cài đặt trình duyệt.",
       };
     }
 
     try {
       const messaging = await resolveMessaging();
       if (!messaging) {
-        return { success: false, message: "Trinh duyet nay chua ho tro Firebase Messaging." };
+        return { success: false, message: "Trình duyệt này chưa hỗ trợ Firebase Messaging." };
       }
 
       const registration = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
@@ -230,14 +230,14 @@ export const notificationService = {
       });
 
       if (!token) {
-        return { success: false, message: "Khong the lay token thong bao cho thiet bi nay." };
+        return { success: false, message: "Không thể lấy token thông báo cho thiết bị này." };
       }
 
       await upsertNotificationToken(session, token);
-      return { success: true, message: "Da bat push notification tren thiet bi nay." };
+      return { success: true, message: "Đã bật push notification trên thiết bị này." };
     } catch (error) {
-      console.error("Khong the dang ky FCM token.", error);
-      return { success: false, message: "Khong the dang ky thong bao cho thiet bi nay." };
+      console.error("Không thể đăng ký FCM token.", error);
+      return { success: false, message: "Không thể đăng ký thông báo cho thiết bị này." };
     }
   },
 
@@ -259,7 +259,7 @@ export const notificationService = {
 
       return { success: true };
     } catch (error) {
-      console.error("Khong the vo hieu token hien tai.", error);
+      console.error("Không thể vô hiệu token hiện tại.", error);
       return { success: false };
     }
   },

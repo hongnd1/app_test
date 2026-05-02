@@ -1,19 +1,26 @@
 import {
   browserLocalPersistence,
+  GoogleAuthProvider,
   onAuthStateChanged,
   setPersistence,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { auth, firestore } from "../../data/config/firebase.js";
 import { authValidator } from "./authValidator.js";
 
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: "select_account",
+});
+
 const ROLE_LABELS = {
-  host: "Chu he thong",
-  admin: "Quan tri vien",
-  staff: "Nhan su",
-  viewer: "Chi xem",
+  host: "Chủ hệ thống",
+  admin: "Quản trị viên",
+  staff: "Nhân sự",
+  viewer: "Chỉ xem",
 };
 
 const ROLE_PERMISSIONS = {
@@ -93,7 +100,9 @@ function getRoleLabel(role) {
 async function getUserProfile(uid) {
   const snapshot = await getDoc(doc(firestore, "users", uid));
   if (!snapshot.exists()) {
-    throw new Error(`Missing users/${uid} profile`);
+    const error = new Error(`Missing users/${uid} profile`);
+    error.code = "profile/missing";
+    throw error;
   }
 
   return snapshot.data();
@@ -105,7 +114,7 @@ function buildSession(user, profile) {
   return {
     uid: user.uid,
     email: user.email ?? "",
-    displayName: profile?.displayName?.trim() || user.displayName || user.email || "Nguoi dung",
+    displayName: profile?.displayName?.trim() || user.displayName || user.email || "Người dùng",
     role,
     roleLabel: getRoleLabel(role),
     permissions: getPermissions(role),
@@ -114,16 +123,22 @@ function buildSession(user, profile) {
 
 function toLoginMessage(error) {
   const messages = {
-    "auth/invalid-email": "Email khong dung dinh dang.",
-    "auth/missing-password": "Vui long nhap mat khau.",
-    "auth/invalid-credential": "Email hoac mat khau khong chinh xac.",
-    "auth/user-not-found": "Tai khoan khong ton tai.",
-    "auth/wrong-password": "Email hoac mat khau khong chinh xac.",
-    "auth/too-many-requests": "Dang nhap that bai qua nhieu lan. Vui long thu lai sau.",
-    "auth/network-request-failed": "Khong the ket noi den Firebase. Kiem tra mang va cau hinh hosting.",
+    "auth/invalid-email": "Email không đúng định dạng.",
+    "auth/missing-password": "Vui lòng nhập mật khẩu.",
+    "auth/invalid-credential": "Email hoặc mật khẩu không chính xác.",
+    "auth/user-not-found": "Tài khoản không tồn tại.",
+    "auth/wrong-password": "Email hoặc mật khẩu không chính xác.",
+    "auth/popup-closed-by-user": "Bạn đã đóng cửa sổ đăng nhập Google.",
+    "auth/cancelled-popup-request": "Yêu cầu đăng nhập Google đã bị hủy.",
+    "auth/popup-blocked": "Trình duyệt đang chặn cửa sổ đăng nhập Google.",
+    "auth/account-exists-with-different-credential":
+      "Email này đã tồn tại với phương thức đăng nhập khác.",
+    "auth/too-many-requests": "Đăng nhập thất bại quá nhiều lần. Vui lòng thử lại sau.",
+    "auth/network-request-failed": "Không thể kết nối đến Firebase. Kiểm tra mạng và cấu hình hosting.",
+    "profile/missing": "Tài khoản đã đăng nhập nhưng chưa được cấp quyền trong users/{uid}.",
   };
 
-  return messages[error?.code] ?? "Khong the dang nhap bang Firebase Authentication.";
+  return messages[error?.code] ?? "Không thể đăng nhập bằng Firebase Authentication.";
 }
 
 export const firebaseAuthService = {
@@ -136,6 +151,16 @@ export const firebaseAuthService = {
     try {
       await ensurePersistence();
       await signInWithEmailAndPassword(auth, credentials.email.trim(), credentials.password.trim());
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: toLoginMessage(error) };
+    }
+  },
+
+  async loginWithGoogle() {
+    try {
+      await ensurePersistence();
+      await signInWithPopup(auth, googleProvider);
       return { success: true };
     } catch (error) {
       return { success: false, message: toLoginMessage(error) };

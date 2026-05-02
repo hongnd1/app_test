@@ -2,6 +2,7 @@ import { notificationConfig } from "../data/config/notificationConfig.js";
 import { firebaseAuthService } from "../logic/auth/firebaseAuthService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
+import { notificationInboxService } from "../logic/notification/notificationInboxService.js";
 import { notificationModeService } from "../logic/notification/notificationModeService.js";
 import { realtimeDatNotificationService } from "../logic/notification/realtimeDatNotificationService.js";
 import { progressService } from "../logic/progress/progressService.js";
@@ -32,6 +33,8 @@ const state = {
   session: null,
   students: [],
   schedules: [],
+  notifications: [],
+  unreadNotificationCount: 0,
   authReady: false,
   isLoadingData: false,
   loadError: "",
@@ -61,6 +64,7 @@ const state = {
     scheduleFormOpen: false,
     scheduleStudentId: null,
     meetingScheduleId: null,
+    showNotificationCenter: false,
   },
 };
 
@@ -86,17 +90,17 @@ function hasPermission(permissionKey) {
 function getNotificationButtonLabel() {
   if (notificationModeService.isRealtimeMode()) {
     return state.notificationPermission === "granted"
-      ? "Da bat thong bao trinh duyet"
-      : "Bat thong bao trinh duyet";
+      ? "Đã bật thông báo trình duyệt"
+      : "Bật thông báo trình duyệt";
   }
 
   if (notificationModeService.isFcmMode()) {
     return state.notificationPermission === "granted"
-      ? "Da bat push notification"
-      : "Bat push notification";
+      ? "Đã bật push notification"
+      : "Bật push notification";
   }
 
-  return "";
+  return "Thông báo đang tắt";
 }
 
 function showToast(title, body) {
@@ -104,51 +108,52 @@ function showToast(title, body) {
   render();
 }
 
-function openPopupNotification(notification) {
-  state.popupNotification = notification;
-  render();
-}
-
-function closePopupNotification() {
-  state.popupNotification = null;
-  render();
-}
-
-function closeToastNotification() {
-  state.toastMessage = null;
-  render();
-}
-
-function showBrowserNotificationIfGranted(notification) {
-  if (!realtimeDatNotificationService.isBrowserNotificationSupported()) {
-    return false;
-  }
-
-  if (realtimeDatNotificationService.getNotificationPermissionStatus() !== "granted") {
-    return false;
-  }
-
-  new Notification(notification.title, {
-    body: notification.body,
-    tag: notification.tag,
-  });
-
-  return true;
-}
-
-async function getFcmNotificationService() {
-  if (!fcmNotificationServicePromise) {
-    fcmNotificationServicePromise = import("../logic/notification/notificationService.js").then(
-      (module) => module.notificationService,
-    );
-  }
-
-  return fcmNotificationServicePromise;
-}
-
 function refreshNotificationState() {
   state.notificationMode = notificationModeService.getCurrentMode();
   state.notificationPermission = realtimeDatNotificationService.getNotificationPermissionStatus();
+}
+
+function refreshNotificationInbox() {
+  if (!state.session?.uid) {
+    state.notifications = [];
+    state.unreadNotificationCount = 0;
+    return;
+  }
+
+  state.notifications = notificationInboxService.getInbox(state.session.uid);
+  state.unreadNotificationCount = notificationInboxService.getUnreadCount(state.session.uid);
+}
+
+function syncPendingNotificationInbox() {
+  if (!state.session?.uid || !notificationModeService.canUseNotification(state.session)) {
+    refreshNotificationInbox();
+    return;
+  }
+
+  notificationInboxService.syncPendingSchedules(state.session.uid, state.schedules, getTodayString());
+  refreshNotificationInbox();
+}
+
+function pushInboxNotification(notification, options = {}) {
+  if (!state.session?.uid || !notificationModeService.canUseNotification(state.session)) {
+    return;
+  }
+
+  const nextNotification = notificationInboxService.addNotification(state.session.uid, notification);
+  refreshNotificationInbox();
+
+  if (options.showToast !== false) {
+    state.toastMessage = {
+      title: nextNotification.title,
+      body: nextNotification.body,
+    };
+  }
+
+  if (options.showPopup) {
+    state.popupNotification = nextNotification;
+  }
+
+  render();
 }
 
 function resetUiState() {
@@ -160,12 +165,15 @@ function resetUiState() {
     scheduleFormOpen: false,
     scheduleStudentId: null,
     meetingScheduleId: null,
+    showNotificationCenter: false,
   };
 }
 
 function clearDataState() {
   state.students = [];
   state.schedules = [];
+  state.notifications = [];
+  state.unreadNotificationCount = 0;
   state.isLoadingData = false;
   state.loadError = "";
   state.popupNotification = null;
@@ -198,6 +206,33 @@ function stopNotificationRuntime() {
   stopForegroundMessageListener();
 }
 
+function showBrowserNotificationIfGranted(notification) {
+  if (!realtimeDatNotificationService.isBrowserNotificationSupported()) {
+    return false;
+  }
+
+  if (realtimeDatNotificationService.getNotificationPermissionStatus() !== "granted") {
+    return false;
+  }
+
+  new Notification(notification.title, {
+    body: notification.body,
+    tag: notification.tag,
+  });
+
+  return true;
+}
+
+async function getFcmNotificationService() {
+  if (!fcmNotificationServicePromise) {
+    fcmNotificationServicePromise = import("../logic/notification/notificationService.js").then(
+      (module) => module.notificationService,
+    );
+  }
+
+  return fcmNotificationServicePromise;
+}
+
 function maybeTriggerScheduleReminder(now = new Date()) {
   if (!hasPermission("canAssignMeetingLocation")) {
     return;
@@ -208,7 +243,7 @@ function maybeTriggerScheduleReminder(now = new Date()) {
     return;
   }
 
-  openPopupNotification(notification);
+  pushInboxNotification(notification, { showPopup: true, showToast: true });
   showBrowserNotificationIfGranted(notification);
 }
 
@@ -238,11 +273,7 @@ async function syncNotificationRuntime() {
 
   if (notificationModeService.isRealtimeMode()) {
     stopRealtimeDatListener = realtimeDatNotificationService.startListening((notification) => {
-      state.toastMessage = {
-        title: notification.title,
-        body: notification.body,
-      };
-      render();
+      pushInboxNotification(notification, { showToast: true });
     });
     return;
   }
@@ -250,11 +281,7 @@ async function syncNotificationRuntime() {
   if (notificationModeService.isFcmMode()) {
     const notificationService = await getFcmNotificationService();
     stopForegroundMessages = notificationService.listenForegroundMessages((notification) => {
-      state.toastMessage = {
-        title: notification.title,
-        body: notification.body,
-      };
-      render();
+      pushInboxNotification(notification, { showToast: true });
     });
   }
 }
@@ -265,6 +292,7 @@ async function syncStudents() {
 
 async function syncSchedules() {
   state.schedules = await scheduleService.getAllSchedules();
+  syncPendingNotificationInbox();
 }
 
 async function loadDashboardData() {
@@ -290,13 +318,14 @@ async function loadDashboardData() {
 
     state.students = students;
     state.schedules = schedules;
+    syncPendingNotificationInbox();
   } catch (error) {
     if (loadId !== currentLoadId) {
       return;
     }
 
-    console.error("Khong the tai du lieu Firebase.", error);
-    state.loadError = "Khong the tai du lieu tu Firebase. Kiem tra Firestore rules va du lieu users/{uid}.";
+    console.error("Không thể tải dữ liệu Firebase.", error);
+    state.loadError = "Không thể tải dữ liệu từ Firebase. Kiểm tra Firestore rules và dữ liệu users/{uid}.";
   } finally {
     if (loadId === currentLoadId) {
       state.isLoadingData = false;
@@ -394,10 +423,13 @@ function openMeetingLocationForm(scheduleId) {
     return;
   }
 
+  notificationInboxService.markAllAsRead(state.session?.uid);
+  refreshNotificationInbox();
   updateUi({
     meetingScheduleId: scheduleId,
     scheduleFormOpen: false,
     activeTab: "schedule",
+    showNotificationCenter: false,
   });
 }
 
@@ -414,6 +446,15 @@ async function handleLogin(credentials) {
   return result;
 }
 
+async function handleGoogleLogin() {
+  state.loginMessage = "";
+  const result = await firebaseAuthService.loginWithGoogle();
+  if (!result.success) {
+    state.loginMessage = result.message;
+  }
+  return result;
+}
+
 async function handleLogout() {
   try {
     if (notificationModeService.isFcmMode()) {
@@ -423,12 +464,12 @@ async function handleLogout() {
 
     await firebaseAuthService.logout();
   } catch (error) {
-    console.error("Khong the dang xuat.", error);
+    console.error("Không thể đăng xuất.", error);
   }
 }
 
 function handleOpenScheduleTab() {
-  updateUi({ activeTab: "schedule" });
+  updateUi({ activeTab: "schedule", showNotificationCenter: false });
 }
 
 async function handleRequestNotificationPermission() {
@@ -437,10 +478,11 @@ async function handleRequestNotificationPermission() {
   }
 
   if (notificationModeService.isNotificationOff()) {
+    showToast("Thông báo", "Chế độ thông báo hiện đang tắt.");
     return;
   }
 
-  let result = { success: false, message: "Thong bao dang tat o mode hien tai." };
+  let result = { success: false, message: "Không thể bật thông báo lúc này." };
 
   try {
     if (notificationModeService.isRealtimeMode()) {
@@ -450,12 +492,12 @@ async function handleRequestNotificationPermission() {
       result = await notificationService.requestNotificationPermissionAndSaveToken(state.session);
     }
   } catch (error) {
-    console.error("Khong the bat thong bao.", error);
-    result = { success: false, message: "Khong the bat thong bao tren thiet bi nay." };
+    console.error("Không thể bật thông báo.", error);
+    result = { success: false, message: "Không thể bật thông báo trên thiết bị này." };
   }
 
   refreshNotificationState();
-  showToast(result.success ? "Thong bao" : "Khong the bat thong bao", result.message);
+  showToast(result.success ? "Thông báo" : "Không thể bật thông báo", result.message);
 }
 
 async function handleChangeNotificationMode(mode) {
@@ -473,15 +515,40 @@ async function handleChangeNotificationMode(mode) {
   render();
 }
 
+function handleToggleNotificationCenter() {
+  updateUi({ showNotificationCenter: !state.ui.showNotificationCenter });
+}
+
+function handleMarkAllNotificationsRead() {
+  notificationInboxService.markAllAsRead(state.session?.uid);
+  refreshNotificationInbox();
+  render();
+}
+
+function handleOpenNotification(notificationId, scheduleId) {
+  notificationInboxService.markAsRead(state.session?.uid, notificationId);
+  refreshNotificationInbox();
+
+  if (scheduleId) {
+    updateUi({
+      activeTab: "schedule",
+      showNotificationCenter: false,
+    });
+    return;
+  }
+
+  render();
+}
+
 async function handleSaveStudent(formData) {
   const isEditing = state.ui.formMode === "edit" && state.ui.editingStudentId;
 
   if (isEditing && !(hasPermission("canEditStudent") || hasPermission("canEditStudentDat"))) {
-    return { success: false, message: "Ban khong co quyen cap nhat hoc vien." };
+    return { success: false, message: "Bạn không có quyền cập nhật học viên." };
   }
 
   if (!isEditing && !hasPermission("canCreateStudent")) {
-    return { success: false, message: "Ban khong co quyen tao hoc vien." };
+    return { success: false, message: "Bạn không có quyền tạo học viên." };
   }
 
   try {
@@ -506,18 +573,18 @@ async function handleSaveStudent(formData) {
 
     return result;
   } catch (error) {
-    console.error("Khong the luu hoc vien.", error);
-    return { success: false, message: "Khong the luu hoc vien len Firebase." };
+    console.error("Không thể lưu học viên.", error);
+    return { success: false, message: "Không thể lưu học viên lên Firebase." };
   }
 }
 
 async function handleDeleteStudent(studentId) {
   if (!hasPermission("canDeleteStudent")) {
-    window.alert("Ban khong co quyen xoa hoc vien.");
+    window.alert("Bạn không có quyền xóa học viên.");
     return;
   }
 
-  const confirmed = window.confirm("Xoa hoc vien nay khoi danh sach?");
+  const confirmed = window.confirm("Xóa học viên này khỏi danh sách?");
   if (!confirmed) {
     return;
   }
@@ -539,14 +606,14 @@ async function handleDeleteStudent(studentId) {
           : state.ui.formMode,
     });
   } catch (error) {
-    console.error("Khong the xoa hoc vien.", error);
-    window.alert("Khong the xoa hoc vien khoi Firebase.");
+    console.error("Không thể xóa học viên.", error);
+    window.alert("Không thể xóa học viên khỏi Firebase.");
   }
 }
 
 async function handleDeleteSchedule(scheduleId) {
   if (!hasPermission("canDeleteSchedule")) {
-    window.alert("Ban khong co quyen xoa lich hoc.");
+    window.alert("Bạn không có quyền xóa lịch học.");
     return;
   }
 
@@ -555,8 +622,8 @@ async function handleDeleteSchedule(scheduleId) {
     await syncSchedules();
     render();
   } catch (error) {
-    console.error("Khong the xoa lich hoc.", error);
-    window.alert("Khong the xoa lich hoc khoi Firebase.");
+    console.error("Không thể xóa lịch học.", error);
+    window.alert("Không thể xóa lịch học khỏi Firebase.");
   }
 }
 
@@ -625,7 +692,7 @@ function handleOpenStudentTab() {
 
 async function handleSaveSchedule(payload) {
   if (!hasPermission("canCreateSchedule")) {
-    return { success: false, message: "Ban khong co quyen tao lich hoc." };
+    return { success: false, message: "Bạn không có quyền tạo lịch học." };
   }
 
   try {
@@ -645,14 +712,14 @@ async function handleSaveSchedule(payload) {
 
     return result;
   } catch (error) {
-    console.error("Khong the luu lich hoc.", error);
-    return { success: false, message: "Khong the luu lich hoc len Firebase." };
+    console.error("Không thể lưu lịch học.", error);
+    return { success: false, message: "Không thể lưu lịch học lên Firebase." };
   }
 }
 
 async function handleSaveMeetingLocation(payload) {
   if (!hasPermission("canAssignMeetingLocation")) {
-    return { success: false, message: "Ban khong co quyen cap nhat dia diem hen." };
+    return { success: false, message: "Bạn không có quyền cập nhật địa điểm hẹn." };
   }
 
   try {
@@ -668,22 +735,22 @@ async function handleSaveMeetingLocation(payload) {
 
     return result;
   } catch (error) {
-    console.error("Khong the cap nhat dia diem hen.", error);
-    return { success: false, message: "Khong the luu dia diem hen len Firebase." };
+    console.error("Không thể cập nhật địa điểm hẹn.", error);
+    return { success: false, message: "Không thể lưu địa điểm hẹn lên Firebase." };
   }
 }
 
 function getActiveFilterLabel(activeStatFilter) {
   const labels = {
-    all: "Toan bo hoc vien",
-    theoryCompleted: "Hoc vien da hoc ly thuyet",
-    unpaid: "Hoc vien con thieu hoc phi",
-    saHinhCompleted: "Hoc vien da hoc sa hinh",
-    datReached: "Hoc vien da dat DAT",
-    paidCompleted: "Hoc vien da hoan tat hoc phi",
+    all: "Toàn bộ học viên",
+    theoryCompleted: "Học viên đã học lý thuyết",
+    unpaid: "Học viên còn thiếu học phí",
+    saHinhCompleted: "Học viên đã học sa hình",
+    datReached: "Học viên đã đạt DAT",
+    paidCompleted: "Học viên đã hoàn tất học phí",
   };
 
-  return labels[activeStatFilter] ?? "Toan bo hoc vien";
+  return labels[activeStatFilter] ?? "Toàn bộ học viên";
 }
 
 function renderLoadingState(title, message) {
@@ -706,7 +773,7 @@ function renderErrorState() {
       <section class="login-panel">
         <div class="panel">
           <p class="eyebrow">Firebase</p>
-          <h2>Khong tai duoc du lieu</h2>
+          <h2>Không tải được dữ liệu</h2>
           <p class="form-message">${state.loadError}</p>
         </div>
       </section>
@@ -716,18 +783,22 @@ function renderErrorState() {
 
 function render() {
   if (!state.authReady) {
-    renderLoadingState("Dang kiem tra phien dang nhap...", "Ung dung dang dong bo trang thai Firebase Authentication.");
+    renderLoadingState("Đang kiểm tra phiên đăng nhập...", "Ứng dụng đang đồng bộ trạng thái Firebase Authentication.");
     return;
   }
 
   if (!state.session) {
     appElement.innerHTML = "";
-    LoginScreen(appElement, { onLogin: handleLogin, message: state.loginMessage });
+    LoginScreen(appElement, {
+      onLogin: handleLogin,
+      onLoginWithGoogle: handleGoogleLogin,
+      message: state.loginMessage,
+    });
     return;
   }
 
   if (state.isLoadingData) {
-    renderLoadingState("Dang tai du lieu...", "Ung dung dang dong bo danh sach hoc vien va lich hoc tu Firestore.");
+    renderLoadingState("Đang tải dữ liệu...", "Ứng dụng đang đồng bộ danh sách học viên và lịch học từ Firestore.");
     return;
   }
 
@@ -769,11 +840,8 @@ function render() {
     statistics,
     progressOverview,
     reminderSummary,
-    showReminderPanel:
-      notificationConfig.enablePendingDatCard &&
-      !notificationModeService.isNotificationOff() &&
-      notificationModeService.canUseNotification(state.session) &&
-      reminderSummary.hasPending,
+    notifications: state.notifications,
+    unreadNotificationCount: state.unreadNotificationCount,
     activeFilterLabel: getActiveFilterLabel(state.ui.activeStatFilter),
     filters: state.ui,
     scheduleBuckets,
@@ -795,7 +863,10 @@ function render() {
     onChangeNotificationMode: handleChangeNotificationMode,
     onRequestNotificationPermission: handleRequestNotificationPermission,
     onLogout: handleLogout,
-    onChangeTab: (activeTab) => updateUi({ activeTab }),
+    onToggleNotificationCenter: handleToggleNotificationCenter,
+    onMarkAllNotificationsRead: handleMarkAllNotificationsRead,
+    onOpenNotification: handleOpenNotification,
+    onChangeTab: (activeTab) => updateUi({ activeTab, showNotificationCenter: false }),
     onChangeScheduleListTab: (scheduleListTab) => updateUi({ scheduleListTab }),
     onChangeCalendarMonth: (patch) => updateUi(patch),
     onSelectScheduleDate: (selectedScheduleDate) => updateUi({ selectedScheduleDate, scheduleListTab: "all" }),
@@ -820,9 +891,15 @@ function render() {
     onCloseMeetingLocationForm: closeMeetingLocationForm,
     onSaveMeetingLocation: handleSaveMeetingLocation,
     popupNotification: state.popupNotification,
-    onDismissPopupNotification: closePopupNotification,
+    onDismissPopupNotification: () => {
+      state.popupNotification = null;
+      render();
+    },
     toastMessage: state.toastMessage,
-    onDismissToastMessage: closeToastNotification,
+    onDismissToastMessage: () => {
+      state.toastMessage = null;
+      render();
+    },
   });
 
   refocusSearchIfNeeded();
@@ -834,10 +911,10 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   stopNotificationRuntime();
 
   if (error) {
-    console.error("Khong the dong bo Firebase Authentication.", error);
+    console.error("Không thể đồng bộ Firebase Authentication.", error);
     state.session = null;
     state.authReady = true;
-    state.loginMessage = "Khong the xac thuc voi Firebase hoac doc users/{uid}.";
+    state.loginMessage = "Không thể xác thực với Firebase hoặc đọc users/{uid}.";
     clearDataState();
     resetUiState();
     refreshNotificationState();
