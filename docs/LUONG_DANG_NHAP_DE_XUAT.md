@@ -1,35 +1,74 @@
-# Luồng đăng nhập đề xuất
+# Luồng đăng nhập đề xuất sau khi quét code
 
-## Mục tiêu
+## 1. Hiện trạng trong code
 
-Luồng đăng nhập mới tách rõ hai việc:
+Code hiện tại đang dùng Firebase Auth để xác thực và Firestore `users/{uid}` để lấy quyền.
 
-- Firebase Authentication xác thực danh tính.
-- Firestore quyết định trạng thái tài khoản, vai trò và quyền sử dụng app.
+Các điểm chính:
 
-App dùng 4 role chuẩn: `host`, `teacher`, `student`, `viewer`. Người dùng mới không được tự tạo role active. Họ chỉ được gửi hồ sơ đăng ký giáo viên hoặc học sinh, sau đó chờ người có quyền duyệt.
+- `src/logic/auth/firebaseAuthService.js` hỗ trợ email/password và Google popup.
+- Sau login, `verifyAuthorizedProfile()` bắt buộc phải đọc được `users/{uid}`.
+- Nếu thiếu `users/{uid}`, service gọi `signOut(auth)` và trả lỗi `profile/missing`.
+- `subscribe()` trong auth service cũng chỉ build session khi đọc được `users/{uid}`.
+- Role hiện tại là `host`, `admin`, `staff`, `viewer`.
+- `main.js` chỉ có 2 trạng thái lớn: chưa auth/loading/login hoặc đã có `session` thì vào dashboard.
+- Chưa có màn onboarding, pending approval, rejected application.
 
-## Trạng thái đăng nhập
+Điều này nghĩa là người dùng mới đăng nhập Firebase thành công nhưng chưa có profile app sẽ bị đá ra login. Luồng mới cần giữ Firebase session và chuyển sang trạng thái đăng ký/chờ duyệt.
 
-| State | Ý nghĩa | Màn hình |
+## 2. Luồng đăng nhập mới
+
+Firebase Auth chỉ trả lời câu hỏi: người này là ai.
+
+Firestore trả lời các câu hỏi:
+
+- Người này đã có profile app chưa?
+- Role gốc là gì?
+- Tài khoản đã được duyệt chưa?
+- Tài khoản đang active hay deactive?
+- Người này có application đang chờ duyệt hoặc bị từ chối không?
+
+Luồng tổng quát:
+
+```txt
+Firebase Auth
+  -> Không có firebaseUser
+    -> loggedOut
+  -> Có firebaseUser
+    -> Đọc users/{uid}
+      -> Có profile
+        -> approvalStatus != approved
+          -> pending/rejected theo role
+        -> approvalStatus approved hoặc host thủ công
+          -> build session theo role + status + effectiveRole
+      -> Không có profile
+        -> Đọc teacherApplications/{uid}
+          -> pending/rejected nếu có
+        -> Đọc studentApplications/{uid}
+          -> pending/rejected nếu có
+        -> Không có gì
+          -> needOnboarding
+```
+
+## 3. Auth state cần có
+
+| State | Ý nghĩa | UI |
 |---|---|---|
-| `checking` | App đang kiểm tra Firebase session và Firestore profile | Loading |
+| `checking` | Đang kiểm tra Firebase và Firestore | Loading |
 | `loggedOut` | Chưa đăng nhập Firebase | Login |
-| `needOnboarding` | Đã đăng nhập Firebase nhưng chưa có profile hoặc application | Chọn Học sinh/Giáo viên |
-| `pendingTeacherApproval` | Giáo viên mới đang chờ host duyệt | Chờ duyệt |
-| `pendingStudentApproval` | Học sinh mới đang chờ giáo viên duyệt | Chờ duyệt |
-| `teacherRejected` | Hồ sơ giáo viên bị từ chối | Thông báo từ chối |
-| `studentRejected` | Hồ sơ học sinh bị từ chối | Thông báo từ chối |
-| `ready` | Có profile hợp lệ và được vào app | Dashboard |
-| `error` | Lỗi đọc dữ liệu hoặc lỗi hệ thống | Error |
+| `needOnboarding` | Có Firebase user nhưng chưa có profile/application | Chọn Học sinh/Giáo viên |
+| `pendingTeacherApproval` | Giáo viên chờ host duyệt | Màn chờ duyệt |
+| `pendingStudentApproval` | Học sinh chờ teacher duyệt | Màn chờ duyệt |
+| `teacherRejected` | Hồ sơ giáo viên bị từ chối | Màn bị từ chối |
+| `studentRejected` | Hồ sơ học sinh bị từ chối | Màn bị từ chối |
+| `ready` | Được vào app | Dashboard |
+| `error` | Lỗi hệ thống/rules/query | Error |
 
-Không còn coi việc thiếu `users/{uid}` là lỗi tuyệt đối. Với người dùng mới, thiếu profile là tín hiệu để chuyển sang onboarding hoặc kiểm tra hồ sơ chờ duyệt.
-
-## Cấu trúc dữ liệu
+## 4. Data model đăng nhập
 
 ### `users/{uid}`
 
-Document này chỉ dành cho tài khoản đã được duyệt hoặc tài khoản được cấp thủ công.
+Chỉ tạo document này khi user được duyệt hoặc được admin hệ thống seed thủ công.
 
 ```json
 {
@@ -42,11 +81,11 @@ Document này chỉ dành cho tài khoản đã được duyệt hoặc tài kho
   "createdAt": "serverTimestamp",
   "updatedAt": "serverTimestamp",
   "approvedAt": "serverTimestamp",
-  "approvedBy": "host_or_teacher_uid"
+  "approvedBy": "host_uid"
 }
 ```
 
-Với học sinh đã duyệt:
+Với học sinh:
 
 ```json
 {
@@ -67,8 +106,6 @@ Với học sinh đã duyệt:
 
 ### `teacherApplications/{uid}`
 
-Dùng cho người dùng chọn đăng ký giáo viên.
-
 ```json
 {
   "uid": "firebase_uid",
@@ -85,8 +122,6 @@ Dùng cho người dùng chọn đăng ký giáo viên.
 ```
 
 ### `studentApplications/{uid}`
-
-Dùng cho người dùng chọn đăng ký học sinh.
 
 ```json
 {
@@ -110,27 +145,18 @@ Dùng cho người dùng chọn đăng ký học sinh.
 }
 ```
 
-## Luồng tổng quát
-
-1. Người dùng đăng nhập bằng email/password hoặc Google.
-2. Firebase Auth trả về `firebaseUser`.
-3. App đọc `users/{uid}`.
-4. Nếu có `users/{uid}`, app normalize role, kiểm tra `approvalStatus`, kiểm tra `status`, tính `effectiveRole`, rồi vào dashboard nếu hợp lệ.
-5. Nếu chưa có `users/{uid}`, app kiểm tra `teacherApplications/{uid}` và `studentApplications/{uid}`.
-6. Nếu có application `pending`, app hiển thị màn chờ duyệt tương ứng.
-7. Nếu application bị `rejected`, app hiển thị lý do từ chối hoặc hướng dẫn liên hệ.
-8. Nếu không có profile và không có application, app chuyển sang onboarding lần đầu.
-
-Pseudo flow:
+## 5. Pseudo code auth service mới
 
 ```js
 async function resolveAuthState(firebaseUser) {
-  if (!firebaseUser) return { state: "loggedOut" };
+  if (!firebaseUser) {
+    return { state: "loggedOut", session: null };
+  }
 
-  const profile = await getUserProfile(firebaseUser.uid);
+  const profile = await getUserProfileOrNull(firebaseUser.uid);
   if (profile) {
     if (profile.approvalStatus && profile.approvalStatus !== "approved") {
-      return resolvePendingState(profile);
+      return resolveProfileApprovalState(profile);
     }
 
     return {
@@ -139,7 +165,7 @@ async function resolveAuthState(firebaseUser) {
     };
   }
 
-  const teacherApplication = await getTeacherApplication(firebaseUser.uid);
+  const teacherApplication = await getApplicationOrNull("teacherApplications", firebaseUser.uid);
   if (teacherApplication?.status === "pending") {
     return { state: "pendingTeacherApproval", application: teacherApplication };
   }
@@ -147,7 +173,7 @@ async function resolveAuthState(firebaseUser) {
     return { state: "teacherRejected", application: teacherApplication };
   }
 
-  const studentApplication = await getStudentApplication(firebaseUser.uid);
+  const studentApplication = await getApplicationOrNull("studentApplications", firebaseUser.uid);
   if (studentApplication?.status === "pending") {
     return { state: "pendingStudentApproval", application: studentApplication };
   }
@@ -155,144 +181,84 @@ async function resolveAuthState(firebaseUser) {
     return { state: "studentRejected", application: studentApplication };
   }
 
-  return { state: "needOnboarding" };
+  return { state: "needOnboarding", firebaseUser };
 }
 ```
 
-## Onboarding lần đầu
-
-Sau khi đăng nhập Firebase nhưng chưa có profile hoặc application, app hiển thị hai lựa chọn:
-
-- Tôi là học sinh.
-- Tôi là giáo viên.
-
-Không cho tự chọn `host` hoặc `viewer`. `host` phải được tạo thủ công, qua script seed an toàn hoặc quy trình quản trị riêng.
-
-## Đăng ký giáo viên
-
-1. User chọn `Giáo viên`.
-2. App tạo `teacherApplications/{uid}` với `status = pending`.
-3. User thấy màn chờ host phê duyệt.
-4. Host duyệt hồ sơ.
-5. Khi duyệt, hệ thống tạo hoặc cập nhật `users/{uid}` với `role = teacher`, `status = active`, `approvalStatus = approved`.
-6. Hệ thống cập nhật `teacherApplications/{uid}.status = approved`.
-
-Khi host từ chối:
-
-- Cập nhật `teacherApplications/{uid}.status = rejected`.
-- Lưu `rejectReason` nếu có.
-- Không tạo quyền `teacher` active trong `users/{uid}`.
-
-## Đăng ký học sinh
-
-1. User chọn `Học sinh`.
-2. App tải danh sách giáo viên có `role = teacher`, `status = active`, `approvalStatus = approved`.
-3. Học sinh chọn giáo viên phụ trách và nhập thông tin cá nhân tối thiểu.
-4. App tạo `studentApplications/{uid}` với `teacherUid` và `status = pending`.
-5. Học sinh thấy màn chờ giáo viên xác nhận.
-6. Giáo viên chỉ thấy application có `teacherUid = currentTeacherUid`.
-7. Khi duyệt, giáo viên tạo hoặc cập nhật document trong `students`, gán `teacherUid` và `studentUserUid`.
-8. Hệ thống tạo hoặc cập nhật `users/{uid}` với `role = student`, `status = active`, `approvalStatus = approved`, `teacherUid`, `studentId`.
-9. Hệ thống cập nhật `studentApplications/{uid}.status = approved`.
-
-Khi giáo viên từ chối:
-
-- Cập nhật `studentApplications/{uid}.status = rejected`.
-- Lưu `rejectReason` nếu có.
-- Không tạo role `student` active trong `users/{uid}`.
-
-## Tài khoản đã có profile
-
-### `host`
-
-- Vào dashboard với quyền host.
-- Không bị hạ quyền theo `status`.
-- Được đổi notification mode, duyệt giáo viên, xem tiến độ theo giáo viên.
-- Không thao tác nghiệp vụ học viên/lịch.
-
-### `teacher`
-
-- Chỉ vào dashboard nghiệp vụ khi `approvalStatus = approved`.
-- Nếu `status = active`, dùng quyền teacher.
-- Nếu `status = deactive`, `effectiveRole = viewer`.
-
-### `student`
-
-- Chỉ vào dashboard khi đã được giáo viên duyệt.
-- Nếu `status = active`, dùng quyền student.
-- Nếu `status = deactive`, `effectiveRole = viewer`.
-
-### `viewer`
-
-- Chỉ xem dữ liệu cơ bản theo phạm vi UI và rules cho phép.
-- Không tạo/sửa/xóa học viên, không tạo/xóa lịch, không bật notification role.
-
-## Tính session
+## 6. Build session
 
 ```js
+function normalizeRole(role) {
+  const normalized = String(role ?? "").trim().toLowerCase();
+  const migratedRole = {
+    admin: "teacher",
+    staff: "student",
+    view: "viewer",
+    viewr: "viewer",
+  }[normalized] || normalized;
+
+  return ROLE_PERMISSIONS[migratedRole] ? migratedRole : "viewer";
+}
+
+function getEffectiveRole(profile) {
+  const role = normalizeRole(profile?.role);
+  if (role === "host") return "host";
+  return profile?.status === "active" ? role : "viewer";
+}
+
 function buildSession(firebaseUser, profile) {
-  const role = normalizeRole(profile.role);
-  const effectiveRole = role === "host"
-    ? "host"
-    : profile.status === "active"
-      ? role
-      : "viewer";
+  const role = normalizeRole(profile?.role);
+  const effectiveRole = getEffectiveRole(profile);
 
   return {
     uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    displayName: profile.displayName || firebaseUser.displayName || firebaseUser.email,
+    email: firebaseUser.email || profile?.email || "",
+    displayName: profile?.displayName || firebaseUser.displayName || firebaseUser.email || "Người dùng",
     role,
-    status: profile.status,
-    approvalStatus: profile.approvalStatus,
+    status: profile?.status || "deactive",
+    approvalStatus: profile?.approvalStatus || "approved",
     effectiveRole,
+    teacherUid: profile?.teacherUid || "",
+    studentId: profile?.studentId || "",
+    roleLabel: ROLE_LABELS[effectiveRole] || ROLE_LABELS.viewer,
     permissions: ROLE_PERMISSIONS[effectiveRole] || ROLE_PERMISSIONS.viewer,
   };
 }
 ```
 
-UI và handler nên dùng `session.permissions`, không rải điều kiện theo role trực tiếp.
+## 7. UI cần thêm
 
-## Màn hình cần bổ sung
-
-- `OnboardingRoleScreen`: chọn Học sinh/Giáo viên.
-- `TeacherApplicationScreen`: form đăng ký giáo viên.
-- `StudentApplicationScreen`: form đăng ký học sinh và chọn giáo viên.
-- `PendingApprovalScreen`: màn chờ duyệt dùng chung.
+- `OnboardingRoleScreen`: chọn `Học sinh` hoặc `Giáo viên`.
+- `TeacherApplicationScreen`: form gửi hồ sơ giáo viên.
+- `StudentApplicationScreen`: chọn giáo viên và gửi hồ sơ học sinh.
+- `PendingApprovalScreen`: hiển thị trạng thái chờ duyệt.
 - `RejectedApplicationScreen`: hiển thị trạng thái bị từ chối.
-- `TeacherApprovalPanel`: giáo viên duyệt học sinh thuộc mình.
 - `HostTeacherApprovalPanel`: host duyệt giáo viên.
-- `HostProgressByTeacherView`: host xem tiến độ nhóm theo `students.teacherUid`.
+- `TeacherStudentApprovalPanel`: teacher duyệt học sinh thuộc mình.
 
-## Firestore Rules cần đáp ứng
+## 8. File code cần sửa
 
-- User mới chỉ được tạo application cho chính `uid` của mình.
-- User không được tự tạo `users/{uid}` active với role `teacher` hoặc `student`.
-- Chỉ `host` được duyệt giáo viên.
-- Chỉ `teacher` phụ trách được duyệt học sinh thuộc `teacherUid` của mình.
-- `teacher` chỉ CRUD học viên/lịch trong phạm vi mình quản lý.
-- `student` chỉ cập nhật trường được phép, ví dụ `soKmDAT`, trên hồ sơ gắn với `studentUserUid`.
-- `deactive` phải bị giới hạn như `viewer` ở backend, không chỉ ở UI.
+| File | Việc cần làm |
+|---|---|
+| `src/logic/auth/firebaseAuthService.js` | Đổi role mới, thêm `resolveAuthState`, không sign out khi thiếu profile |
+| `src/app/main.js` | Thêm `authState`, render onboarding/pending/rejected |
+| `src/ui/screens/LoginScreen.js` | Giữ nhiệm vụ login, không tự quyết dashboard |
+| `src/ui/screens/*` | Thêm các màn onboarding/application/approval |
+| `src/logic/notification/notificationModeService.js` | Dùng permission thay vì role cũ |
+| `src/logic/notification/notificationService.js` | Dùng `canEnablePushNotifications` thay vì `host/admin/staff` |
+| `firestore.rules` | Đổi rules sang `host/teacher/student/viewer`, thêm application rules |
+| `firestore.indexes.json` | Thêm index cho application, students, schedules nếu query theo role mới |
 
-## Thông báo lỗi cần có
+## 9. Firebase cần update
 
-- Chưa hoàn tất đăng ký: `Bạn cần chọn loại tài khoản để hoàn tất đăng ký.`
-- Giáo viên chờ duyệt: `Tài khoản giáo viên của bạn đang chờ host phê duyệt.`
-- Học sinh chờ duyệt: `Thông tin học sinh của bạn đang chờ giáo viên xác nhận.`
-- Bị từ chối: `Yêu cầu đăng ký của bạn đã bị từ chối. Vui lòng liên hệ người phụ trách để biết thêm chi tiết.`
-- Tài khoản deactive: `Tài khoản của bạn đang bị tắt. Bạn chỉ có thể xem dữ liệu cơ bản.`
+Chi tiết code Firebase cần update được viết riêng tại:
 
-## Kết luận
+- `docs/FIREBASE_UPDATE_DE_XUAT.md`
 
-Luồng đăng nhập mới:
+File đó có:
 
-```txt
-Firebase Login
-  -> Có users/{uid}?
-    -> Có: build session theo role + approvalStatus + status
-    -> Không: kiểm tra teacherApplications/studentApplications
-      -> Có pending/rejected: hiển thị trạng thái hồ sơ
-      -> Không có: onboarding Học sinh/Giáo viên
-```
+- Prototype `firestore.rules`.
+- `firestore.indexes.json` đề xuất.
+- Script migrate role cũ `admin/staff` sang `teacher/student`.
+- Script seed host thủ công.
 
-Điểm quan trọng là không tạo quyền active từ frontend và không để UI là lớp bảo vệ duy nhất. Firestore Rules phải phản ánh đúng cùng một mô hình quyền.
