@@ -3,6 +3,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firestore } from "../../data/config/firebase.js";
 import { notificationConfig } from "../../data/config/notificationConfig.js";
@@ -83,11 +84,17 @@ export const realtimeDatNotificationService = {
     return notification;
   },
 
-  startListening(onNotify) {
+  startListening(session, onNotify) {
     let ready = false;
     const notifiedIds = new Set();
 
-    const scheduleQuery = query(collection(firestore, "schedules"), orderBy("createdAt", "asc"));
+    const effectiveRole = session?.effectiveRole ?? session?.role;
+    const scheduleQuery =
+      effectiveRole === "teacher"
+        ? query(collection(firestore, "schedules"), where("teacherUid", "==", session.uid), orderBy("createdAt", "asc"))
+        : effectiveRole === "student"
+          ? query(collection(firestore, "schedules"), where("studentUserUid", "==", session.uid), orderBy("createdAt", "asc"))
+          : query(collection(firestore, "schedules"), orderBy("createdAt", "asc"));
     return onSnapshot(scheduleQuery, async (snapshot) => {
       if (!ready) {
         snapshot.docs.forEach((item) => notifiedIds.add(item.id));

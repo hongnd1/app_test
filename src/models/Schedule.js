@@ -39,6 +39,9 @@ export function createScheduleModel(data) {
     notificationStatus: data.notificationStatus ?? "pending",
     notifiedAt: data.notifiedAt ?? null,
     datCreatedNotificationSentAt: data.datCreatedNotificationSentAt ?? null,
+    teacherUid: data.teacherUid ?? "",
+    studentUserUid: data.studentUserUid ?? "",
+    createdByUid: data.createdByUid ?? "",
     createdAt,
     updatedAt,
   };

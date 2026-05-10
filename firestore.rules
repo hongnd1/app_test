@@ -1,0 +1,344 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function hasUserDoc() {
+      return isSignedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function currentUser() {
+      return get(userPath(request.auth.uid)).data;
+    }
+
+    function role() {
+      return hasUserDoc() && currentUser().role in ["host", "teacher", "student", "viewer"]
+        ? currentUser().role
+        : "viewer";
+    }
+
+    function approvalStatus() {
+      return hasUserDoc() ? currentUser().approvalStatus : "pending";
+    }
+
+    function accountStatus() {
+      return hasUserDoc() ? currentUser().status : "deactive";
+    }
+
+    function isApproved() {
+      return approvalStatus() == "approved";
+    }
+
+    function isActiveOrHost() {
+      return role() == "host" || accountStatus() == "active";
+    }
+
+    function hasActiveProfile() {
+      return hasUserDoc() && isApproved() && isActiveOrHost();
+    }
+
+    function isHost() {
+      return hasActiveProfile() && role() == "host";
+    }
+
+    function isTeacher() {
+      return hasActiveProfile() && role() == "teacher";
+    }
+
+    function isStudent() {
+      return hasActiveProfile() && role() == "student";
+    }
+
+    function validOptionalString(data, field, max) {
+      return !(field in data) || (data[field] is string && data[field].size() <= max);
+    }
+
+    function validEmail(value) {
+      return value is string
+        && value.size() <= 254
+        && value.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    }
+
+    function validUser(data) {
+      return data.keys().hasOnly([
+          "uid", "email", "displayName", "role", "status", "approvalStatus",
+          "teacherUid", "studentId", "createdAt", "updatedAt", "approvedAt", "approvedBy"
+        ])
+        && data.uid is string
+        && data.uid.size() > 0
+        && validEmail(data.email)
+        && data.displayName is string
+        && data.displayName.size() <= 100
+        && data.role in ["host", "teacher", "student", "viewer"]
+        && data.status in ["active", "deactive"]
+        && data.approvalStatus in ["pending", "approved", "rejected"]
+        && validOptionalString(data, "teacherUid", 128)
+        && validOptionalString(data, "studentId", 64);
+    }
+
+    function validTeacherApplication(data, uid) {
+      return data.keys().hasOnly([
+          "uid", "email", "displayName", "phone", "note", "status",
+          "createdAt", "reviewedAt", "reviewedBy", "rejectReason"
+        ])
+        && data.uid == uid
+        && validEmail(data.email)
+        && data.displayName is string
+        && data.displayName.size() <= 100
+        && validOptionalString(data, "phone", 20)
+        && validOptionalString(data, "note", 500)
+        && validOptionalString(data, "reviewedBy", 128)
+        && validOptionalString(data, "rejectReason", 500)
+        && data.status in ["pending", "approved", "rejected"];
+    }
+
+    function validStudentProfile(profile) {
+      return profile is map
+        && profile.keys().hasOnly(["hoTen", "loaiBang", "soDienThoai", "tenZalo", "cccd", "ghiChu"])
+        && profile.hoTen is string
+        && profile.hoTen.size() <= 100
+        && profile.loaiBang is string
+        && profile.loaiBang.size() <= 40
+        && validOptionalString(profile, "soDienThoai", 20)
+        && validOptionalString(profile, "tenZalo", 100)
+        && validOptionalString(profile, "cccd", 20)
+        && validOptionalString(profile, "ghiChu", 500);
+    }
+
+    function validStudentApplication(data, uid) {
+      return data.keys().hasOnly([
+          "uid", "email", "displayName", "teacherUid", "studentProfile", "status",
+          "createdAt", "reviewedAt", "reviewedBy", "rejectReason"
+        ])
+        && data.uid == uid
+        && validEmail(data.email)
+        && data.displayName is string
+        && data.displayName.size() <= 100
+        && data.teacherUid is string
+        && data.teacherUid.size() > 0
+        && validStudentProfile(data.studentProfile)
+        && validOptionalString(data, "reviewedBy", 128)
+        && validOptionalString(data, "rejectReason", 500)
+        && data.status in ["pending", "approved", "rejected"];
+    }
+
+    function validStudent(data) {
+      return data.keys().hasOnly([
+          "id", "ten", "sdt", "tenZalo", "cccd", "loaiBang",
+          "tongHocPhi", "daNop", "conThieu", "daHocLyThuyet",
+          "soKmDAT", "daHocSaHinh", "teacherUid", "studentUserUid",
+          "createdAt", "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() <= 64
+        && data.ten is string
+        && data.ten.size() <= 100
+        && data.sdt is string
+        && data.sdt.size() <= 20
+        && data.tenZalo is string
+        && data.tenZalo.size() <= 100
+        && data.cccd is string
+        && data.cccd.size() <= 20
+        && data.loaiBang is string
+        && data.loaiBang.size() <= 40
+        && data.tongHocPhi is number
+        && data.tongHocPhi >= 0
+        && data.daNop is number
+        && data.daNop >= 0
+        && data.conThieu is number
+        && data.conThieu >= 0
+        && data.daHocLyThuyet is bool
+        && data.soKmDAT is number
+        && data.soKmDAT >= 0
+        && data.daHocSaHinh is bool
+        && data.teacherUid is string
+        && data.teacherUid.size() > 0
+        && validOptionalString(data, "studentUserUid", 128);
+    }
+
+    function teacherOwnsStudent(data) {
+      return isTeacher() && data.teacherUid == request.auth.uid;
+    }
+
+    function studentOwnsStudent(data) {
+      return isStudent() && data.studentUserUid == request.auth.uid;
+    }
+
+    function studentOnlyUpdatesDatKm() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(["soKmDAT"])
+        && request.resource.data.soKmDAT is number
+        && request.resource.data.soKmDAT >= 0;
+    }
+
+    function validSchedule(data) {
+      return data.keys().hasOnly([
+          "id", "studentId", "studentName", "studentPhone", "studentZaloName",
+          "licenseType", "date", "slotKey", "slotLabel", "startTime", "endTime",
+          "time", "note", "meetingLocation", "meetingLocationStatus",
+          "teacherReminderNote", "teacherConfirmed", "reminderCreatedAt",
+          "reminderUpdatedAt", "meetingNote", "notificationStatus", "notifiedAt",
+          "datCreatedNotificationSentAt", "createdAt", "updatedAt",
+          "teacherUid", "studentUserUid", "createdByUid"
+        ])
+        && data.id is string
+        && data.id.size() <= 64
+        && data.studentId is string
+        && data.studentId.size() <= 64
+        && data.studentName is string
+        && data.studentName.size() <= 100
+        && validOptionalString(data, "studentPhone", 20)
+        && validOptionalString(data, "studentZaloName", 100)
+        && data.licenseType is string
+        && data.licenseType.size() <= 40
+        && data.date is string
+        && data.date.size() <= 20
+        && data.slotKey is string
+        && data.slotKey.size() <= 40
+        && data.slotLabel is string
+        && data.slotLabel.size() <= 40
+        && data.startTime is string
+        && data.startTime.size() <= 10
+        && data.endTime is string
+        && data.endTime.size() <= 10
+        && data.time is string
+        && data.time.size() <= 30
+        && validOptionalString(data, "note", 500)
+        && validOptionalString(data, "meetingLocation", 500)
+        && data.meetingLocationStatus in ["pending", "confirmed", "cancelled"]
+        && validOptionalString(data, "teacherReminderNote", 500)
+        && data.teacherConfirmed is bool
+        && validOptionalString(data, "meetingNote", 500)
+        && data.notificationStatus in ["pending", "ready", "sent"]
+        && data.teacherUid is string
+        && data.teacherUid.size() > 0
+        && validOptionalString(data, "studentUserUid", 128)
+        && data.createdByUid is string;
+    }
+
+    function teacherOwnsSchedule(data) {
+      return isTeacher() && data.teacherUid == request.auth.uid;
+    }
+
+    function studentOwnsSchedule(data) {
+      return isStudent() && data.studentUserUid == request.auth.uid;
+    }
+
+    function validNotificationToken(data) {
+      return data.keys().hasOnly([
+          "uid", "email", "displayName", "role", "effectiveRole", "token",
+          "platform", "userAgent", "enabled", "createdAt", "updatedAt"
+        ])
+        && data.uid == request.auth.uid
+        && validOptionalString(data, "email", 254)
+        && validOptionalString(data, "displayName", 100)
+        && data.role in ["host", "teacher", "student", "viewer"]
+        && data.effectiveRole in ["host", "teacher", "student", "viewer"]
+        && data.token is string
+        && data.token.size() <= 4096
+        && data.platform is string
+        && data.platform.size() <= 40
+        && validOptionalString(data, "userAgent", 500)
+        && data.enabled is bool;
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid
+        || isHost()
+        || (resource.data.role == "teacher"
+          && resource.data.status == "active"
+          && resource.data.approvalStatus == "approved")
+      );
+      allow create, update: if (
+        isHost()
+        || (isTeacher() && request.resource.data.role == "student" && request.resource.data.teacherUid == request.auth.uid)
+      ) && validUser(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /teacherApplications/{uid} {
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && !hasUserDoc()
+        && validTeacherApplication(request.resource.data, uid)
+        && request.resource.data.status == "pending";
+      allow read: if isSignedIn() && (request.auth.uid == uid || isHost());
+      allow update: if isHost()
+        && validTeacherApplication(request.resource.data, uid)
+        && resource.data.status == "pending"
+        && request.resource.data.status in ["approved", "rejected"];
+      allow delete: if false;
+    }
+
+    match /studentApplications/{uid} {
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && !hasUserDoc()
+        && validStudentApplication(request.resource.data, uid)
+        && request.resource.data.status == "pending";
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid || isHost() || (isTeacher() && resource.data.teacherUid == request.auth.uid));
+      allow update: if isTeacher()
+        && resource.data.teacherUid == request.auth.uid
+        && validStudentApplication(request.resource.data, uid)
+        && resource.data.status == "pending"
+        && request.resource.data.status in ["approved", "rejected"];
+      allow delete: if false;
+    }
+
+    match /students/{studentId} {
+      allow read: if isHost() || teacherOwnsStudent(resource.data) || studentOwnsStudent(resource.data);
+      allow create: if isTeacher()
+        && validStudent(request.resource.data)
+        && request.resource.data.teacherUid == request.auth.uid;
+      allow update: if (
+        isTeacher()
+        && resource.data.teacherUid == request.auth.uid
+        && request.resource.data.teacherUid == resource.data.teacherUid
+        && validStudent(request.resource.data)
+      ) || (
+        studentOwnsStudent(resource.data)
+        && request.resource.data.teacherUid == resource.data.teacherUid
+        && request.resource.data.studentUserUid == resource.data.studentUserUid
+        && studentOnlyUpdatesDatKm()
+      );
+      allow delete: if isTeacher() && resource.data.teacherUid == request.auth.uid;
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if isHost() || teacherOwnsSchedule(resource.data) || studentOwnsSchedule(resource.data);
+      allow create: if validSchedule(request.resource.data)
+        && (
+          (isTeacher() && request.resource.data.teacherUid == request.auth.uid)
+          || (isStudent() && request.resource.data.studentUserUid == request.auth.uid)
+        );
+      allow update: if isTeacher()
+        && resource.data.teacherUid == request.auth.uid
+        && request.resource.data.teacherUid == resource.data.teacherUid
+        && validSchedule(request.resource.data);
+      allow delete: if isTeacher() && resource.data.teacherUid == request.auth.uid;
+    }
+
+    match /notificationTokens/{tokenId} {
+      allow create: if hasActiveProfile() && validNotificationToken(request.resource.data);
+      allow read: if hasActiveProfile() && (resource.data.uid == request.auth.uid || isHost());
+      allow update: if hasActiveProfile()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && validNotificationToken(request.resource.data);
+      allow delete: if hasActiveProfile() && resource.data.uid == request.auth.uid;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isHost();
+      allow create: if isHost() || isTeacher();
+      allow update, delete: if false;
+    }
+  }
+}

@@ -15,5 +15,7 @@ export function createStudentModel(data) {
     daHocLyThuyet: Boolean(data.daHocLyThuyet),
     soKmDAT: Number(data.soKmDAT) || 0,
     daHocSaHinh: Boolean(data.daHocSaHinh),
+    teacherUid: String(data.teacherUid ?? "").trim(),
+    studentUserUid: String(data.studentUserUid ?? "").trim(),
   };
 }

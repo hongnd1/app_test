@@ -48,12 +48,12 @@ function getCalendarDays(month, year, schedules, selectedDate) {
 }
 
 export const scheduleService = {
-  async getAllSchedules() {
-    return normalizeSchedules(await scheduleRepository.getAll());
+  async getAllSchedules(session = null) {
+    return normalizeSchedules(await scheduleRepository.getAll(session));
   },
 
-  async createSchedule(payload, student) {
-    const schedules = await this.getAllSchedules();
+  async createSchedule(payload, student, session = null) {
+    const schedules = await this.getAllSchedules(session);
     const slot = getScheduleSlot(payload.slotKey);
     const schedule = createScheduleModel({
       id: generateScheduleId(schedules),
@@ -74,6 +74,9 @@ export const scheduleService = {
       teacherConfirmed: false,
       reminderCreatedAt: new Date().toISOString(),
       reminderUpdatedAt: new Date().toISOString(),
+      teacherUid: student?.teacherUid || session?.teacherUid || session?.uid || "",
+      studentUserUid: student?.studentUserUid || (session?.effectiveRole === "student" ? session.uid : ""),
+      createdByUid: session?.uid || "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -87,8 +90,8 @@ export const scheduleService = {
     return { success: true, schedule };
   },
 
-  async updateMeetingLocation(scheduleId, payload) {
-    const schedules = await this.getAllSchedules();
+  async updateMeetingLocation(scheduleId, payload, session = null) {
+    const schedules = await this.getAllSchedules(session);
     const currentSchedule = schedules.find((item) => item.id === scheduleId);
 
     if (!currentSchedule) {

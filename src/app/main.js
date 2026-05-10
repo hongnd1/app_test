@@ -17,6 +17,8 @@ const today = new Date();
 const initialDate = today.toISOString().slice(0, 10);
 
 const defaultPermissions = {
+  canViewStudents: false,
+  canViewStudentsByTeacher: false,
   canCreateStudent: false,
   canEditStudent: false,
   canEditStudentDat: false,
@@ -27,9 +29,17 @@ const defaultPermissions = {
   canAssignMeetingLocation: false,
   canEnablePushNotifications: false,
   canSetNotificationMode: false,
+  canApproveTeacher: false,
+  canApproveStudent: false,
 };
 
 const state = {
+  authState: "checking",
+  firebaseUser: null,
+  application: null,
+  approvedTeachers: [],
+  pendingTeacherApplications: [],
+  pendingStudentApplications: [],
   session: null,
   students: [],
   schedules: [],
@@ -65,6 +75,7 @@ const state = {
     scheduleStudentId: null,
     meetingScheduleId: null,
     showNotificationCenter: false,
+    onboardingRole: null,
   },
 };
 
@@ -166,6 +177,7 @@ function resetUiState() {
     scheduleStudentId: null,
     meetingScheduleId: null,
     showNotificationCenter: false,
+    onboardingRole: null,
   };
 }
 
@@ -174,6 +186,8 @@ function clearDataState() {
   state.schedules = [];
   state.notifications = [];
   state.unreadNotificationCount = 0;
+  state.pendingTeacherApplications = [];
+  state.pendingStudentApplications = [];
   state.isLoadingData = false;
   state.loadError = "";
   state.popupNotification = null;
@@ -272,7 +286,7 @@ async function syncNotificationRuntime() {
   }
 
   if (notificationModeService.isRealtimeMode()) {
-    stopRealtimeDatListener = realtimeDatNotificationService.startListening((notification) => {
+    stopRealtimeDatListener = realtimeDatNotificationService.startListening(state.session, (notification) => {
       pushInboxNotification(notification, { showToast: true });
     });
     return;
@@ -287,11 +301,11 @@ async function syncNotificationRuntime() {
 }
 
 async function syncStudents() {
-  state.students = await studentService.getAllStudents();
+  state.students = await studentService.getAllStudents(state.session);
 }
 
 async function syncSchedules() {
-  state.schedules = await scheduleService.getAllSchedules();
+  state.schedules = await scheduleService.getAllSchedules(state.session);
   syncPendingNotificationInbox();
 }
 
@@ -308,8 +322,8 @@ async function loadDashboardData() {
 
   try {
     const [students, schedules] = await Promise.all([
-      studentService.getAllStudents(),
-      scheduleService.getAllSchedules(),
+      studentService.getAllStudents(state.session),
+      scheduleService.getAllSchedules(state.session),
     ]);
 
     if (loadId !== currentLoadId) {
@@ -318,6 +332,12 @@ async function loadDashboardData() {
 
     state.students = students;
     state.schedules = schedules;
+    state.pendingTeacherApplications = hasPermission("canApproveTeacher")
+      ? await firebaseAuthService.listPendingTeacherApplications()
+      : [];
+    state.pendingStudentApplications = hasPermission("canApproveStudent")
+      ? await firebaseAuthService.listPendingStudentApplications(state.session)
+      : [];
     syncPendingNotificationInbox();
   } catch (error) {
     if (loadId !== currentLoadId) {
@@ -455,6 +475,126 @@ async function handleGoogleLogin() {
   return result;
 }
 
+async function chooseOnboardingRole(role) {
+  state.ui.onboardingRole = role;
+  state.loginMessage = "";
+
+  if (role === "student") {
+    try {
+      state.approvedTeachers = await firebaseAuthService.listApprovedTeachers();
+    } catch (error) {
+      console.error("Không thể tải danh sách giáo viên.", error);
+      state.loginMessage = "Không thể tải danh sách giáo viên đang hoạt động.";
+    }
+  }
+
+  render();
+}
+
+async function handleSubmitTeacherApplication(formData) {
+  try {
+    const result = await firebaseAuthService.submitTeacherApplication({
+      displayName: formData.get("displayName"),
+      phone: formData.get("phone"),
+      note: formData.get("note"),
+    });
+
+    if (!result.success) {
+      state.loginMessage = result.message;
+      render();
+      return;
+    }
+
+    state.authState = "pendingTeacherApproval";
+    state.application = { status: "pending" };
+    state.loginMessage = "";
+    render();
+  } catch (error) {
+    console.error("Không thể gửi hồ sơ giáo viên.", error);
+    state.loginMessage = toAuthMessage(error);
+    render();
+  }
+}
+
+async function handleSubmitStudentApplication(formData) {
+  try {
+    const studentProfile = {
+      hoTen: String(formData.get("hoTen") || "").trim(),
+      loaiBang: String(formData.get("loaiBang") || "").trim(),
+      soDienThoai: String(formData.get("soDienThoai") || "").trim(),
+      tenZalo: String(formData.get("tenZalo") || "").trim(),
+      cccd: String(formData.get("cccd") || "").trim(),
+      ghiChu: String(formData.get("ghiChu") || "").trim(),
+    };
+    const result = await firebaseAuthService.submitStudentApplication({
+      teacherUid: formData.get("teacherUid"),
+      studentProfile,
+    });
+
+    if (!result.success) {
+      state.loginMessage = result.message;
+      render();
+      return;
+    }
+
+    state.authState = "pendingStudentApproval";
+    state.application = { status: "pending" };
+    state.loginMessage = "";
+    render();
+  } catch (error) {
+    console.error("Không thể gửi hồ sơ học sinh.", error);
+    state.loginMessage = toAuthMessage(error);
+    render();
+  }
+}
+
+async function refreshApprovalApplications() {
+  state.pendingTeacherApplications = hasPermission("canApproveTeacher")
+    ? await firebaseAuthService.listPendingTeacherApplications()
+    : [];
+  state.pendingStudentApplications = hasPermission("canApproveStudent")
+    ? await firebaseAuthService.listPendingStudentApplications(state.session)
+    : [];
+}
+
+async function handleApproveTeacher(uid) {
+  const application = state.pendingTeacherApplications.find((item) => item.uid === uid);
+  if (!application) return;
+
+  await firebaseAuthService.approveTeacherApplication(application, state.session);
+  await refreshApprovalApplications();
+  render();
+}
+
+async function handleRejectTeacher(uid) {
+  const application = state.pendingTeacherApplications.find((item) => item.uid === uid);
+  if (!application) return;
+
+  const rejectReason = window.prompt("Lý do từ chối giáo viên?", "") || "";
+  await firebaseAuthService.rejectTeacherApplication(application, state.session, rejectReason);
+  await refreshApprovalApplications();
+  render();
+}
+
+async function handleApproveStudent(uid) {
+  const application = state.pendingStudentApplications.find((item) => item.uid === uid);
+  if (!application) return;
+
+  await firebaseAuthService.approveStudentApplication(application, state.session);
+  await Promise.all([syncStudents(), refreshApprovalApplications()]);
+  render();
+}
+
+async function handleRejectStudent(uid) {
+  const application = state.pendingStudentApplications.find((item) => item.uid === uid);
+  if (!application) return;
+
+  const rejectReason = window.prompt("Lý do từ chối học sinh?", "") || "";
+  await firebaseAuthService.rejectStudentApplication(application, state.session, rejectReason);
+  await refreshApprovalApplications();
+  render();
+}
+
 async function handleLogout() {
   try {
     state.loginMessage = "";
@@ -559,8 +699,10 @@ async function handleSaveStudent(formData) {
         : formData;
 
     const result = isEditing
-      ? await studentService.updateStudent(state.ui.editingStudentId, payload)
-      : await studentService.createStudent(payload);
+      ? hasPermission("canEditStudent")
+        ? await studentService.updateStudent(state.ui.editingStudentId, payload, state.session)
+        : await studentService.updateStudentDat(state.ui.editingStudentId, payload.soKmDAT, state.session)
+      : await studentService.createStudent(payload, state.session);
 
     if (result.success) {
       await syncStudents();
@@ -698,7 +840,7 @@ async function handleSaveSchedule(payload) {
 
   try {
     const student = state.students.find((item) => item.id === payload.studentId);
-    const result = await scheduleService.createSchedule(payload, student);
+    const result = await scheduleService.createSchedule(payload, student, state.session);
 
     if (result.success) {
       await syncSchedules();
@@ -724,7 +866,7 @@ async function handleSaveMeetingLocation(payload) {
   }
 
   try {
-    const result = await scheduleService.updateMeetingLocation(state.ui.meetingScheduleId, payload);
+    const result = await scheduleService.updateMeetingLocation(state.ui.meetingScheduleId, payload, state.session);
 
     if (result.success) {
       await syncSchedules();
@@ -782,9 +924,203 @@ function renderErrorState() {
   `;
 }
 
+function renderPendingState(kind) {
+  const title =
+    kind === "teacher"
+      ? "Tài khoản giáo viên đang chờ duyệt"
+      : "Thông tin học sinh đang chờ xác nhận";
+  const message =
+    kind === "teacher"
+      ? "Host sẽ phê duyệt tài khoản giáo viên trước khi bạn vào dashboard."
+      : "Giáo viên phụ trách sẽ xác nhận hồ sơ trước khi bạn sử dụng app.";
+
+  appElement.innerHTML = `
+    <main class="login-screen">
+      <section class="login-panel">
+        <div class="panel">
+          <p class="eyebrow">Chờ duyệt</p>
+          <h2>${title}</h2>
+          <p class="hero-copy">${message}</p>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-action="logout">Đăng xuất</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+  appElement.querySelector('[data-action="logout"]').addEventListener("click", handleLogout);
+}
+
+function renderRejectedState(kind) {
+  const rejectReason = state.application?.rejectReason ? `<p class="form-message">${state.application.rejectReason}</p>` : "";
+  appElement.innerHTML = `
+    <main class="login-screen">
+      <section class="login-panel">
+        <div class="panel">
+          <p class="eyebrow">Bị từ chối</p>
+          <h2>${kind === "teacher" ? "Hồ sơ giáo viên bị từ chối" : "Hồ sơ học sinh bị từ chối"}</h2>
+          <p class="hero-copy">Vui lòng liên hệ người phụ trách để biết thêm chi tiết.</p>
+          ${rejectReason}
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-action="logout">Đăng xuất</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+  appElement.querySelector('[data-action="logout"]').addEventListener("click", handleLogout);
+}
+
+function renderOnboardingState() {
+  const userName = state.firebaseUser?.displayName || state.firebaseUser?.email || "người dùng";
+  const teacherOptions = state.approvedTeachers
+    .map((teacher) => `<option value="${teacher.uid}">${teacher.displayName || teacher.email || teacher.uid}</option>`)
+    .join("");
+
+  const roleBody = !state.ui.onboardingRole
+    ? `
+      <div class="form-actions">
+        <button type="button" class="primary-button" data-role="student">Tôi là học sinh</button>
+        <button type="button" class="secondary-button" data-role="teacher">Tôi là giáo viên</button>
+      </div>
+    `
+    : state.ui.onboardingRole === "teacher"
+      ? `
+        <form class="student-form" data-form="teacher">
+          <label class="field">
+            <span>Tên hiển thị</span>
+            <input name="displayName" value="${userName}" required />
+          </label>
+          <label class="field">
+            <span>Số điện thoại</span>
+            <input name="phone" />
+          </label>
+          <label class="field">
+            <span>Ghi chú</span>
+            <textarea name="note" rows="3"></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-action="back">Quay lại</button>
+            <button type="submit" class="primary-button">Gửi chờ host duyệt</button>
+          </div>
+        </form>
+      `
+      : `
+        <form class="student-form" data-form="student">
+          <label class="field">
+            <span>Giáo viên phụ trách</span>
+            <select name="teacherUid" required>
+              <option value="">Chọn giáo viên</option>
+              ${teacherOptions}
+            </select>
+          </label>
+          <label class="field">
+            <span>Họ tên</span>
+            <input name="hoTen" value="${userName}" required />
+          </label>
+          <label class="field">
+            <span>Loại bằng</span>
+            <input name="loaiBang" value="B tự động" required />
+          </label>
+          <label class="field">
+            <span>Số điện thoại</span>
+            <input name="soDienThoai" />
+          </label>
+          <label class="field">
+            <span>Tên Zalo</span>
+            <input name="tenZalo" />
+          </label>
+          <label class="field">
+            <span>CCCD</span>
+            <input name="cccd" />
+          </label>
+          <label class="field">
+            <span>Ghi chú</span>
+            <textarea name="ghiChu" rows="3"></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-action="back">Quay lại</button>
+            <button type="submit" class="primary-button">Gửi chờ giáo viên duyệt</button>
+          </div>
+        </form>
+      `;
+
+  appElement.innerHTML = `
+    <main class="login-screen">
+      <section class="login-panel">
+        <div class="panel">
+          <p class="eyebrow">Hoàn tất đăng ký</p>
+          <h2>Chọn loại tài khoản</h2>
+          <p class="hero-copy">Bạn đã đăng nhập Firebase. Hãy gửi hồ sơ để được cấp quyền sử dụng app.</p>
+          ${state.loginMessage ? `<p class="form-message">${state.loginMessage}</p>` : ""}
+          ${roleBody}
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-action="logout">Đăng xuất</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+
+  appElement.querySelector('[data-action="logout"]').addEventListener("click", handleLogout);
+  appElement.querySelectorAll("[data-role]").forEach((button) => {
+    button.addEventListener("click", () => chooseOnboardingRole(button.dataset.role));
+  });
+
+  const backButton = appElement.querySelector('[data-action="back"]');
+  if (backButton) {
+    backButton.addEventListener("click", () => {
+      state.ui.onboardingRole = null;
+      state.loginMessage = "";
+      render();
+    });
+  }
+
+  const teacherForm = appElement.querySelector('[data-form="teacher"]');
+  if (teacherForm) {
+    teacherForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      handleSubmitTeacherApplication(new FormData(teacherForm));
+    });
+  }
+
+  const studentForm = appElement.querySelector('[data-form="student"]');
+  if (studentForm) {
+    studentForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      handleSubmitStudentApplication(new FormData(studentForm));
+    });
+  }
+}
+
 function render() {
   if (!state.authReady) {
     renderLoadingState("Đang kiểm tra phiên đăng nhập...", "Ứng dụng đang đồng bộ trạng thái Firebase Authentication.");
+    return;
+  }
+
+  if (state.authState === "needOnboarding") {
+    renderOnboardingState();
+    return;
+  }
+
+  if (state.authState === "pendingTeacherApproval") {
+    renderPendingState("teacher");
+    return;
+  }
+
+  if (state.authState === "pendingStudentApproval") {
+    renderPendingState("student");
+    return;
+  }
+
+  if (state.authState === "teacherRejected") {
+    renderRejectedState("teacher");
+    return;
+  }
+
+  if (state.authState === "studentRejected") {
+    renderRejectedState("student");
     return;
   }
 
@@ -857,6 +1193,12 @@ function render() {
     supportsBrowserNotifications: realtimeDatNotificationService.isBrowserNotificationSupported(),
     notificationPermission: state.notificationPermission,
     notificationButtonLabel: getNotificationButtonLabel(),
+    pendingTeacherApplications: state.pendingTeacherApplications,
+    pendingStudentApplications: state.pendingStudentApplications,
+    onApproveTeacherApplication: handleApproveTeacher,
+    onRejectTeacherApplication: handleRejectTeacher,
+    onApproveStudentApplication: handleApproveStudent,
+    onRejectStudentApplication: handleRejectStudent,
     showNotificationButton:
       !notificationModeService.isNotificationOff() &&
       notificationModeService.canUseNotification(state.session),
@@ -906,7 +1248,7 @@ function render() {
   refocusSearchIfNeeded();
 }
 
-firebaseAuthService.subscribe(async ({ session, error }) => {
+firebaseAuthService.subscribe(async ({ authState, session, error }) => {
   currentLoadId += 1;
   stopReminderLoop();
   stopNotificationRuntime();
@@ -914,6 +1256,7 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
   if (error) {
     console.error("Không thể đồng bộ Firebase Authentication.", error);
     state.session = null;
+    state.authState = "error";
     state.authReady = true;
     state.loginMessage = toAuthMessage(error);
     clearDataState();
@@ -923,6 +1266,9 @@ firebaseAuthService.subscribe(async ({ session, error }) => {
     return;
   }
 
+  state.authState = authState?.state ?? "loggedOut";
+  state.firebaseUser = authState?.firebaseUser ?? null;
+  state.application = authState?.application ?? null;
   state.session = session;
   state.authReady = true;
   refreshNotificationState();

@@ -842,6 +842,72 @@ function renderSettingsTab(container, props) {
   }
   section.appendChild(notificationSettings);
 
+  const hasTeacherApprovals = props.permissions.canApproveTeacher && props.pendingTeacherApplications?.length;
+  const hasStudentApprovals = props.permissions.canApproveStudent && props.pendingStudentApplications?.length;
+  if (hasTeacherApprovals || hasStudentApprovals) {
+    const approvalPanel = document.createElement("section");
+    approvalPanel.className = "panel settings-panel";
+    approvalPanel.innerHTML = `
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Duyệt tài khoản</p>
+          <h2>Hồ sơ đang chờ xử lý</h2>
+        </div>
+      </div>
+      <div class="schedule-list"></div>
+    `;
+
+    const list = approvalPanel.querySelector(".schedule-list");
+    if (hasTeacherApprovals) {
+      props.pendingTeacherApplications.forEach((application) => {
+        const item = document.createElement("article");
+        item.className = "schedule-card";
+        item.innerHTML = `
+          <div class="schedule-card__header">
+            <div>
+              <p class="eyebrow">Giáo viên chờ host duyệt</p>
+              <h3>${application.displayName || application.email}</h3>
+              <p class="muted">${application.email || ""}</p>
+            </div>
+            <div class="toolbar-actions">
+              <button type="button" class="secondary-button compact-button" data-action="reject">Từ chối</button>
+              <button type="button" class="primary-button compact-button" data-action="approve">Duyệt</button>
+            </div>
+          </div>
+        `;
+        item.querySelector('[data-action="approve"]').addEventListener("click", () => props.onApproveTeacherApplication(application.uid));
+        item.querySelector('[data-action="reject"]').addEventListener("click", () => props.onRejectTeacherApplication(application.uid));
+        list.appendChild(item);
+      });
+    }
+
+    if (hasStudentApprovals) {
+      props.pendingStudentApplications.forEach((application) => {
+        const profile = application.studentProfile || {};
+        const item = document.createElement("article");
+        item.className = "schedule-card";
+        item.innerHTML = `
+          <div class="schedule-card__header">
+            <div>
+              <p class="eyebrow">Học sinh chờ giáo viên duyệt</p>
+              <h3>${profile.hoTen || application.displayName || application.email}</h3>
+              <p class="muted">${application.email || ""} · ${profile.loaiBang || ""}</p>
+            </div>
+            <div class="toolbar-actions">
+              <button type="button" class="secondary-button compact-button" data-action="reject">Từ chối</button>
+              <button type="button" class="primary-button compact-button" data-action="approve">Duyệt</button>
+            </div>
+          </div>
+        `;
+        item.querySelector('[data-action="approve"]').addEventListener("click", () => props.onApproveStudentApplication(application.uid));
+        item.querySelector('[data-action="reject"]').addEventListener("click", () => props.onRejectStudentApplication(application.uid));
+        list.appendChild(item);
+      });
+    }
+
+    section.appendChild(approvalPanel);
+  }
+
   const accountPanel = document.createElement("section");
   accountPanel.className = "panel settings-panel";
   accountPanel.innerHTML = `

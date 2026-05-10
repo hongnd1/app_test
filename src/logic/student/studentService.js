@@ -24,19 +24,20 @@ function normalizeStudents(students) {
 }
 
 export const studentService = {
-  async getAllStudents() {
-    return normalizeStudents(await studentRepository.getAll());
+  async getAllStudents(session = null) {
+    return normalizeStudents(await studentRepository.getAll(session));
   },
 
-  async getStudentById(studentId) {
-    return (await this.getAllStudents()).find((student) => student.id === studentId) ?? null;
+  async getStudentById(studentId, session = null) {
+    return (await this.getAllStudents(session)).find((student) => student.id === studentId) ?? null;
   },
 
-  async createStudent(data) {
-    const students = await this.getAllStudents();
+  async createStudent(data, session = null) {
+    const students = await this.getAllStudents(session);
     const student = createStudentModel({
       ...data,
       id: generateStudentId(students),
+      teacherUid: data.teacherUid || session?.uid || "",
     });
 
     const validation = studentValidator.validate(student);
@@ -48,8 +49,8 @@ export const studentService = {
     return { success: true, student };
   },
 
-  async updateStudent(studentId, data) {
-    const students = await this.getAllStudents();
+  async updateStudent(studentId, data, session = null) {
+    const students = await this.getAllStudents(session);
     const currentStudent = students.find((student) => student.id === studentId);
 
     if (!currentStudent) {
@@ -69,6 +70,23 @@ export const studentService = {
 
     await studentRepository.save(updatedStudent);
 
+    return { success: true, student: updatedStudent };
+  },
+
+  async updateStudentDat(studentId, soKmDAT, session = null) {
+    const students = await this.getAllStudents(session);
+    const currentStudent = students.find((student) => student.id === studentId);
+
+    if (!currentStudent) {
+      return { success: false, message: "Không tìm thấy học sinh cần cập nhật km DAT." };
+    }
+
+    const updatedStudent = createStudentModel({
+      ...currentStudent,
+      soKmDAT,
+    });
+
+    await studentRepository.save(updatedStudent);
     return { success: true, student: updatedStudent };
   },
 

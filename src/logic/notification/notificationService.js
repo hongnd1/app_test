@@ -95,6 +95,7 @@ async function upsertNotificationToken(session, token) {
       email: session.email || "",
       displayName: session.displayName || "",
       role: session.role || "",
+      effectiveRole: session.effectiveRole || session.role || "",
       token,
       platform: "web",
       userAgent: navigator.userAgent,
@@ -200,7 +201,7 @@ export const notificationService = {
       return { success: false, message: "Trình duyệt này chưa hỗ trợ thông báo." };
     }
 
-    if (!["host", "admin", "staff"].includes(session.role)) {
+    if (!session.permissions?.canEnablePushNotifications) {
       return { success: false, message: "Tài khoản này không được phép bật thông báo." };
     }
 

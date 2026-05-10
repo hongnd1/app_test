@@ -1,15 +1,27 @@
-# Luồng đăng nhập đề xuất sau khi quét code
+# Luồng đăng nhập mới đã triển khai
 
-## 1. Hiện trạng trong code
+## 0. Trạng thái cập nhật
 
-Code hiện tại đang dùng Firebase Auth để xác thực và Firestore `users/{uid}` để lấy quyền.
+Đã cập nhật code theo luồng mới:
+
+- `firebaseAuthService` không sign out khi thiếu `users/{uid}`.
+- User mới sau Firebase Auth được chuyển sang `needOnboarding`.
+- Đã có form gửi `teacherApplications/{uid}` và `studentApplications/{uid}`.
+- Đã có màn chờ duyệt/từ chối.
+- Đã có logic host duyệt giáo viên và teacher duyệt học sinh trong tab Cài đặt.
+- Session mới có `role`, `status`, `approvalStatus`, `effectiveRole`, `permissions`, `teacherUid`, `studentId`.
+- Firestore rules/indexes đã được cập nhật ở `firestore.rules` và `firestore.indexes.json`.
+
+## 1. Hiện trạng cũ đã thay đổi
+
+Trước khi cập nhật, code dùng Firebase Auth để xác thực và Firestore `users/{uid}` để lấy quyền.
 
 Các điểm chính:
 
 - `src/logic/auth/firebaseAuthService.js` hỗ trợ email/password và Google popup.
-- Sau login, `verifyAuthorizedProfile()` bắt buộc phải đọc được `users/{uid}`.
-- Nếu thiếu `users/{uid}`, service gọi `signOut(auth)` và trả lỗi `profile/missing`.
-- `subscribe()` trong auth service cũng chỉ build session khi đọc được `users/{uid}`.
+- Sau login, code cũ bắt buộc phải đọc được `users/{uid}`.
+- Nếu thiếu `users/{uid}`, code cũ sign out và trả lỗi `profile/missing`.
+- Phần này đã được thay bằng `resolveAuthState()`.
 - Role hiện tại là `host`, `admin`, `staff`, `viewer`.
 - `main.js` chỉ có 2 trạng thái lớn: chưa auth/loading/login hoặc đã có `session` thì vào dashboard.
 - Chưa có màn onboarding, pending approval, rejected application.
@@ -236,18 +248,18 @@ function buildSession(firebaseUser, profile) {
 - `HostTeacherApprovalPanel`: host duyệt giáo viên.
 - `TeacherStudentApprovalPanel`: teacher duyệt học sinh thuộc mình.
 
-## 8. File code cần sửa
+## 8. File code đã cập nhật
 
 | File | Việc cần làm |
 |---|---|
-| `src/logic/auth/firebaseAuthService.js` | Đổi role mới, thêm `resolveAuthState`, không sign out khi thiếu profile |
-| `src/app/main.js` | Thêm `authState`, render onboarding/pending/rejected |
-| `src/ui/screens/LoginScreen.js` | Giữ nhiệm vụ login, không tự quyết dashboard |
-| `src/ui/screens/*` | Thêm các màn onboarding/application/approval |
-| `src/logic/notification/notificationModeService.js` | Dùng permission thay vì role cũ |
-| `src/logic/notification/notificationService.js` | Dùng `canEnablePushNotifications` thay vì `host/admin/staff` |
-| `firestore.rules` | Đổi rules sang `host/teacher/student/viewer`, thêm application rules |
-| `firestore.indexes.json` | Thêm index cho application, students, schedules nếu query theo role mới |
+| `src/logic/auth/firebaseAuthService.js` | Đã đổi role mới, thêm `resolveAuthState`, application submit/list/approve/reject |
+| `src/app/main.js` | Đã thêm `authState`, render onboarding/pending/rejected và nối handler duyệt |
+| `src/ui/screens/DashboardScreen.js` | Đã thêm panel duyệt hồ sơ trong tab Cài đặt |
+| `src/logic/student/*` | Đã query theo `session`, thêm `teacherUid`, `studentUserUid`, `updateStudentDat` |
+| `src/logic/schedule/*` | Đã query theo `session`, ghi `teacherUid`, `studentUserUid`, `createdByUid` |
+| `src/logic/notification/*` | Đã dùng permission thay vì role cũ |
+| `firestore.rules` | Đã đổi rules sang `host/teacher/student/viewer`, thêm application rules |
+| `firestore.indexes.json` | Đã thêm indexes cho realtime/query theo role mới |
 
 ## 9. Firebase cần update
 
@@ -261,4 +273,3 @@ File đó có:
 - `firestore.indexes.json` đề xuất.
 - Script migrate role cũ `admin/staff` sang `teacher/student`.
 - Script seed host thủ công.
-

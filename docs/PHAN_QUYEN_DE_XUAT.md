@@ -1,8 +1,19 @@
-# Phân quyền đề xuất sau khi quét code
+# Phân quyền mới đã triển khai
 
-## 1. Hiện trạng trong code
+## 0. Trạng thái cập nhật
 
-Phân quyền hiện tại nằm chủ yếu ở:
+Đã cập nhật code từ role cũ `admin/staff` sang role mới:
+
+- `host`
+- `teacher`
+- `student`
+- `viewer`
+
+Code hiện dùng `effectiveRole` và `permissions` để điều khiển UI/action. Firestore rules cũng đã chuyển sang role mới và kiểm soát dữ liệu theo `teacherUid`/`studentUserUid`.
+
+## 1. Hiện trạng cũ đã thay đổi
+
+Phân quyền nằm chủ yếu ở:
 
 - `src/logic/auth/firebaseAuthService.js`
 - `src/app/main.js`
@@ -14,7 +25,7 @@ Phân quyền hiện tại nằm chủ yếu ở:
 - `src/logic/notification/notificationService.js`
 - `firestore.rules`
 
-Role hiện tại:
+Role cũ trước khi cập nhật:
 
 - `host`
 - `admin`
@@ -34,7 +45,7 @@ Permission hiện tại:
 - `canEnablePushNotifications`
 - `canSetNotificationMode`
 
-Rules hiện tại:
+Rules cũ trước khi cập nhật:
 
 - `admin` tạo/sửa/xóa học viên và lịch.
 - `staff` chỉ sửa `soKmDAT` và tạo lịch.
@@ -232,19 +243,20 @@ export const ROLE_PERMISSIONS = {
 - Không ghi dữ liệu.
 - Là fallback cho role sai hoặc tài khoản deactive.
 
-## 8. File code cần sửa
+## 8. File code đã cập nhật
 
 | File | Việc cần sửa |
 |---|---|
-| `src/logic/auth/firebaseAuthService.js` | Đổi role/permission object, thêm `effectiveRole` |
-| `src/app/main.js` | Thêm permission mới vào `defaultPermissions`; handler check đủ quyền |
-| `src/ui/components/StudentDetail.js` | Đổi helper `Admin/Staff` sang permission-based |
-| `src/ui/components/StudentForm.js` | Tách full edit và DAT-only theo permission |
-| `src/ui/components/StudentCard.js` | Ẩn dữ liệu nhạy cảm theo `canViewSensitiveStudentInfo` |
-| `src/logic/student/studentService.js` | Thêm API update DAT riêng; ghi `teacherUid`, `studentUserUid` |
-| `src/logic/schedule/scheduleService.js` | Ghi `teacherUid`, `studentUserUid`, `createdByUid` vào lịch |
-| `src/logic/notification/*` | Dùng permission mới, bỏ role cũ |
-| `firestore.rules` | Enforce role mới và phạm vi dữ liệu |
+| `src/logic/auth/firebaseAuthService.js` | Đã đổi role/permission object, thêm `effectiveRole`, application approval |
+| `src/app/main.js` | Đã thêm permission mới vào `defaultPermissions`; handler check quyền |
+| `src/ui/screens/DashboardScreen.js` | Đã thêm panel duyệt giáo viên/học sinh |
+| `src/ui/components/StudentDetail.js` | Đang dùng permission để ẩn/hiện thông tin nhạy cảm |
+| `src/ui/components/StudentForm.js` | Đang tách full edit và DAT-only theo permission |
+| `src/ui/components/StudentCard.js` | Đang ẩn dữ liệu nhạy cảm theo `canViewSensitiveStudentInfo` |
+| `src/logic/student/studentService.js` | Đã thêm API update DAT riêng; ghi `teacherUid`, `studentUserUid` |
+| `src/logic/schedule/scheduleService.js` | Đã ghi `teacherUid`, `studentUserUid`, `createdByUid` vào lịch |
+| `src/logic/notification/*` | Đã dùng permission mới, bỏ role cũ |
+| `firestore.rules` | Đã enforce role mới và phạm vi dữ liệu |
 
 ## 9. Firebase cần update
 
@@ -253,4 +265,3 @@ Chi tiết code Firebase cần update được viết riêng tại:
 - `docs/FIREBASE_UPDATE_DE_XUAT.md`
 
 Mỗi khi task sau này cần đổi Firestore collection, rules hoặc indexes, tài liệu update Firebase phải được cập nhật cùng commit để có code kiểm tra trước khi deploy.
-

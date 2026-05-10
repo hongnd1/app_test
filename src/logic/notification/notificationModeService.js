@@ -4,14 +4,6 @@ import {
   setNotificationMode,
 } from "../../data/config/notificationConfig.js";
 
-const NOTIFICATION_ROLES = new Set([
-  "host",
-  "admin",
-  "editor",
-  "staff",
-  "scheduler",
-]);
-
 const MODE_LABELS = {
   [NOTIFICATION_MODES.OFF]: "Tắt thông báo",
   [NOTIFICATION_MODES.REALTIME]: "Realtime miễn phí",
@@ -32,11 +24,11 @@ export const notificationModeService = {
   },
 
   canUseNotification(session) {
-    return NOTIFICATION_ROLES.has(String(session?.role ?? "").trim().toLowerCase());
+    return Boolean(session?.permissions?.canEnablePushNotifications);
   },
 
   canManageNotificationMode(session) {
-    return String(session?.role ?? "").trim().toLowerCase() === "host";
+    return Boolean(session?.permissions?.canSetNotificationMode);
   },
 
   getNotificationModeLabel() {
