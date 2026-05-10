@@ -156,6 +156,12 @@ export const notificationInboxService = {
     return sortInbox(nextInbox);
   },
 
+  removeNotification(uid, notificationId) {
+    const nextInbox = readInbox(uid).filter((item) => item.id !== notificationId);
+    saveInbox(uid, sortInbox(nextInbox));
+    return sortInbox(nextInbox);
+  },
+
   clear(uid) {
     if (!uid) {
       return;

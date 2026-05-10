@@ -73,6 +73,19 @@ function notificationPermissionLabel(status) {
   return labels[status] ?? status;
 }
 
+function formatDateTime(value) {
+  if (!value) {
+    return "Chưa có thời gian";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("vi-VN");
+}
+
+function feedbackStatusLabel(status) {
+  return status === "resolved" ? "Đã xử lý" : "Đang mở";
+}
+
 function createToast(message, onClose) {
   const toast = document.createElement("div");
   toast.className = "toast-notification";
@@ -133,18 +146,23 @@ function createNotificationCenter(props) {
     list.appendChild(empty);
   } else {
     props.notifications.forEach((notification) => {
-      const item = document.createElement("button");
-      item.type = "button";
+      const item = document.createElement("article");
       item.className = `notification-item ${notification.readAt ? "" : "is-unread"}`;
       item.innerHTML = `
-        <div>
+        <button type="button" class="notification-item__content" data-action="open">
           <strong>${notification.title}</strong>
           <p>${notification.body}</p>
-          <span>${new Date(notification.createdAt).toLocaleString("vi-VN")}</span>
-        </div>
+          <span>${formatDateTime(notification.createdAt)}</span>
+        </button>
+        <button type="button" class="ghost-danger-button compact-button" data-action="delete">Xóa</button>
         <span class="notification-item__state">${notification.readAt ? "Đã đọc" : "Mới"}</span>
       `;
-      item.addEventListener("click", () => props.onOpenNotification(notification.id, notification.scheduleId));
+      item.querySelector('[data-action="open"]').addEventListener("click", () =>
+        props.onOpenNotification(notification.id, notification.scheduleId),
+      );
+      item.querySelector('[data-action="delete"]').addEventListener("click", () =>
+        props.onDeleteNotification(notification.id),
+      );
       list.appendChild(item);
     });
   }
@@ -712,6 +730,112 @@ function renderStudentsTab(container, props) {
   container.appendChild(section);
 }
 
+function renderStatisticsTab(container, props) {
+  const report = props.statisticsReport;
+  const section = document.createElement("section");
+  section.className = "tab-panel active";
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, index) => currentYear - 2 + index);
+
+  section.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Thống kê</p>
+        <h1>Tiến độ đào tạo</h1>
+      </div>
+      <div class="toolbar-actions">
+        <label class="field compact-field">
+          <span>Tháng</span>
+          <select data-action="stats-month">
+            ${Array.from({ length: 12 }, (_, index) => `
+              <option value="${index}" ${index === props.filters.statsMonth ? "selected" : ""}>Tháng ${index + 1}</option>
+            `).join("")}
+          </select>
+        </label>
+        <label class="field compact-field">
+          <span>Năm</span>
+          <select data-action="stats-year">
+            ${years.map((year) => `<option value="${year}" ${year === props.filters.statsYear ? "selected" : ""}>${year}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+    </div>
+    ${
+      props.permissions.canViewStudentsByTeacher
+        ? `
+          <section class="panel">
+            <label class="field">
+              <span>Chọn giáo viên</span>
+              <select data-action="stats-teacher">
+                <option value="">Tất cả giáo viên</option>
+                ${props.approvedTeachers
+                  .map(
+                    (teacher) => `
+                      <option value="${teacher.uid}" ${teacher.uid === props.filters.statsTeacherUid ? "selected" : ""}>
+                        ${teacher.displayName || teacher.email}
+                      </option>
+                    `,
+                  )
+                  .join("")}
+              </select>
+            </label>
+          </section>
+        `
+        : ""
+    }
+    <div class="progress-grid">
+      <article class="panel">
+        <p class="eyebrow">Trong tháng đã chọn</p>
+        <h2>${report.taughtStudents}</h2>
+        <p class="hero-copy">Học viên có lịch học DAT</p>
+      </article>
+      <article class="panel">
+        <p class="eyebrow">Trong tháng đã chọn</p>
+        <h2>${report.schedulesInPeriod}</h2>
+        <p class="hero-copy">Buổi/lịch DAT đã tạo</p>
+      </article>
+      <article class="panel">
+        <p class="eyebrow">Hiện tại</p>
+        <h2>${report.graduatedStudents}</h2>
+        <p class="hero-copy">Học viên đã tốt nghiệp</p>
+      </article>
+      <article class="panel">
+        <p class="eyebrow">Hiện tại</p>
+        <h2>${report.datKm.toLocaleString("vi-VN")} km</h2>
+        <p class="hero-copy">Tổng km DAT đã chạy</p>
+      </article>
+    </div>
+    <section class="panel">
+      <div class="detail-grid">
+        <div class="detail-card">
+          <span>Tổng học viên đang quản lý</span>
+          <strong>${report.totalStudents}</strong>
+        </div>
+        <div class="detail-card">
+          <span>Kỳ thống kê</span>
+          <strong>Tháng ${report.month + 1}/${report.year}</strong>
+        </div>
+      </div>
+    </section>
+  `;
+
+  section.querySelector('[data-action="stats-month"]').addEventListener("change", (event) =>
+    props.onChangeStatisticsFilter({ statsMonth: Number(event.target.value) }),
+  );
+  section.querySelector('[data-action="stats-year"]').addEventListener("change", (event) =>
+    props.onChangeStatisticsFilter({ statsYear: Number(event.target.value) }),
+  );
+
+  const teacherSelect = section.querySelector('[data-action="stats-teacher"]');
+  if (teacherSelect) {
+    teacherSelect.addEventListener("change", (event) =>
+      props.onChangeStatisticsFilter({ statsTeacherUid: event.target.value }),
+    );
+  }
+
+  container.appendChild(section);
+}
+
 function renderSettingsTab(container, props) {
   const section = document.createElement("section");
   section.className = "tab-panel active settings-tab";
@@ -908,6 +1032,102 @@ function renderSettingsTab(container, props) {
     section.appendChild(approvalPanel);
   }
 
+  if (props.permissions.canSubmitFeedback) {
+    const feedbackPanel = document.createElement("section");
+    feedbackPanel.className = "panel settings-panel";
+    feedbackPanel.innerHTML = `
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Góp ý và phản hồi</p>
+          <h2>Báo vấn đề trong app</h2>
+        </div>
+      </div>
+      <form class="form-grid" data-form="feedback">
+        <label class="field">
+          <span>Tiêu đề</span>
+          <input name="title" type="text" placeholder="Ví dụ: Không lưu được lịch DAT" required />
+        </label>
+        <label class="field">
+          <span>Mô tả bug</span>
+          <textarea name="description" rows="4" placeholder="Mô tả màn hình, thao tác và lỗi bạn gặp" required></textarea>
+        </label>
+        <p class="form-message" data-feedback-message></p>
+        <div class="form-actions">
+          <button type="submit" class="primary-button">Gửi cho host</button>
+        </div>
+      </form>
+    `;
+
+    feedbackPanel.querySelector('[data-form="feedback"]').addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const result = await props.onSubmitFeedback({
+        title: new FormData(form).get("title"),
+        description: new FormData(form).get("description"),
+      });
+      const message = feedbackPanel.querySelector("[data-feedback-message]");
+      message.textContent = result.message || "";
+      if (result.success) {
+        form.reset();
+      }
+    });
+
+    section.appendChild(feedbackPanel);
+  }
+
+  if (props.permissions.canViewFeedbackReports) {
+    const reportPanel = document.createElement("section");
+    reportPanel.className = "panel settings-panel";
+    reportPanel.innerHTML = `
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Vấn đề app</p>
+          <h2>Góp ý và phản hồi từ giáo viên, học sinh</h2>
+        </div>
+      </div>
+      <div class="schedule-list"></div>
+    `;
+
+    const list = reportPanel.querySelector(".schedule-list");
+    if (!props.feedbackReports.length) {
+      list.innerHTML = `
+        <div class="empty-state compact-empty">
+          <h3>Chưa có vấn đề app</h3>
+          <p>Các phản hồi mới sẽ hiển thị tại đây.</p>
+        </div>
+      `;
+    } else {
+      props.feedbackReports.forEach((report) => {
+        const item = document.createElement("article");
+        item.className = "schedule-card";
+        item.innerHTML = `
+          <div class="schedule-card__header">
+            <div>
+              <p class="eyebrow">${feedbackStatusLabel(report.status)} · ${report.authorRole || ""}</p>
+              <h3>${report.title}</h3>
+              <p class="muted">${report.authorName || report.authorEmail || report.authorUid} · ${formatDateTime(report.createdAt)}</p>
+            </div>
+            ${
+              report.status === "resolved"
+                ? ""
+                : '<button type="button" class="secondary-button compact-button" data-action="resolve">Đã xử lý</button>'
+            }
+          </div>
+          <p class="schedule-note">${report.description}</p>
+        `;
+
+        const resolveButton = item.querySelector('[data-action="resolve"]');
+        if (resolveButton) {
+          resolveButton.addEventListener("click", () => props.onResolveFeedback(report.id));
+        }
+
+        list.appendChild(item);
+      });
+    }
+
+    section.appendChild(reportPanel);
+  }
+
   const accountPanel = document.createElement("section");
   accountPanel.className = "panel settings-panel";
   accountPanel.innerHTML = `
@@ -968,6 +1188,9 @@ export function DashboardScreen(root, props) {
   if (props.filters.activeTab === "students") {
     renderStudentsTab(content, props);
   }
+  if (props.filters.activeTab === "statistics" && props.permissions.canViewStatistics) {
+    renderStatisticsTab(content, props);
+  }
   if (props.filters.activeTab === "settings") {
     renderSettingsTab(content, props);
   }
@@ -979,6 +1202,13 @@ export function DashboardScreen(root, props) {
     createBottomTabButton("Học viên", "students", props.filters.activeTab, props.onChangeTab),
     createBottomTabButton("Cài đặt", "settings", props.filters.activeTab, props.onChangeTab),
   );
+
+  if (props.permissions.canViewStatistics) {
+    bottomBar.insertBefore(
+      createBottomTabButton("Thống kê", "statistics", props.filters.activeTab, props.onChangeTab),
+      bottomBar.lastElementChild,
+    );
+  }
 
   root.appendChild(container);
 
@@ -992,6 +1222,7 @@ export function DashboardScreen(root, props) {
         onClose: props.onToggleNotificationCenter,
         onMarkAllNotificationsRead: props.onMarkAllNotificationsRead,
         onOpenNotification: props.onOpenNotification,
+        onDeleteNotification: props.onDeleteNotification,
       }),
     );
     root.appendChild(modal);

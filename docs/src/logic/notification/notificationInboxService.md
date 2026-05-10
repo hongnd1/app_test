@@ -19,3 +19,6 @@ Quản lý inbox thông báo cục bộ theo từng user bằng `localStorage`.
 - Với role `viewer`, không nên tạo inbox nhắc việc nghiệp vụ.
 - Khi student có notification riêng, cần lọc theo `studentUserUid`.
 
+## Cap nhat xoa thong bao
+
+- API `removeNotification(uid, notificationId)` xoa mot item khoi inbox localStorage va tra ve inbox da sort lai.

@@ -49,6 +49,9 @@ export const ROLE_PERMISSIONS = {
     canSetNotificationMode: true,
     canApproveTeacher: true,
     canApproveStudent: false,
+    canSubmitFeedback: false,
+    canViewFeedbackReports: true,
+    canViewStatistics: true,
   },
   teacher: {
     canViewStudents: true,
@@ -65,6 +68,9 @@ export const ROLE_PERMISSIONS = {
     canSetNotificationMode: false,
     canApproveTeacher: false,
     canApproveStudent: true,
+    canSubmitFeedback: true,
+    canViewFeedbackReports: false,
+    canViewStatistics: true,
   },
   student: {
     canViewStudents: true,
@@ -81,6 +87,9 @@ export const ROLE_PERMISSIONS = {
     canSetNotificationMode: false,
     canApproveTeacher: false,
     canApproveStudent: false,
+    canSubmitFeedback: true,
+    canViewFeedbackReports: false,
+    canViewStatistics: false,
   },
   viewer: {
     canViewStudents: false,
@@ -97,6 +106,9 @@ export const ROLE_PERMISSIONS = {
     canSetNotificationMode: false,
     canApproveTeacher: false,
     canApproveStudent: false,
+    canSubmitFeedback: false,
+    canViewFeedbackReports: false,
+    canViewStatistics: false,
   },
 };
 

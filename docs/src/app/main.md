@@ -27,3 +27,10 @@ Entry point của app. File này giữ state runtime, subscribe auth, tải dữ
 - Luồng mới nên mở rộng state auth thành `checking`, `needOnboarding`, `pendingTeacherApproval`, `pendingStudentApproval`, `rejected`, `ready`.
 - `render()` cần route tới các màn onboarding/chờ duyệt trước khi vào dashboard.
 
+## Cap nhat gop y, thong bao, thong ke
+
+- `main.js` noi `feedbackService` de teacher/student gui gop y va host xem `feedbackReports`.
+- Host co the danh dau van de app da xu ly.
+- Notification center co handler xoa tung thong bao local.
+- Tab `Thong ke` dung `progressService.getTeachingStatistics`; host co them danh sach giao vien da duyet de loc.
+- Permission moi can giu dong bo: `canSubmitFeedback`, `canViewFeedbackReports`, `canViewStatistics`.

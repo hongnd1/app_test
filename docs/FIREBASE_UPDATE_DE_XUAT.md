@@ -158,3 +158,25 @@ npx -y firebase-tools@latest deploy --only firestore:indexes
 ```
 
 I've set up prototype Security Rules to keep the data in Firestore safe. They are designed to be secure for the proposed role model because they default to authenticated access, prevent users from creating their own active privileged `users/{uid}` profile, scope teacher/student writes by `teacherUid` and `studentUserUid`, and validate document fields on writes. However, you should review and verify them before broadly sharing your app. If you'd like, I can help you harden these rules.
+
+## Cap nhat collection feedbackReports
+
+Collection moi:
+
+| Collection | Document ID | Muc dich |
+|---|---|---|
+| `feedbackReports` | `${uid}_${timestamp}` | Teacher/student gui gop y, bug; host xem va danh dau da xu ly |
+
+Rules moi:
+
+- Teacher/student active va approved duoc create `feedbackReports` cua chinh minh.
+- `authorUid` phai bang `request.auth.uid`.
+- `authorRole` phai bang role hien tai va chi chap nhan `teacher` hoac `student`.
+- Host duoc doc tat ca report va update `status = resolved`.
+- Khong role nao duoc delete report tu client.
+
+Code can deploy sau khi review:
+
+```bash
+npx -y firebase-tools@latest deploy --only firestore:rules
+```

@@ -1,5 +1,6 @@
 import { notificationConfig } from "../data/config/notificationConfig.js";
 import { firebaseAuthService, toAuthMessage } from "../logic/auth/firebaseAuthService.js";
+import { feedbackService } from "../logic/feedback/feedbackService.js";
 import { filterService } from "../logic/filter/filterService.js";
 import { searchService } from "../logic/filter/searchService.js";
 import { notificationInboxService } from "../logic/notification/notificationInboxService.js";
@@ -31,6 +32,9 @@ const defaultPermissions = {
   canSetNotificationMode: false,
   canApproveTeacher: false,
   canApproveStudent: false,
+  canSubmitFeedback: false,
+  canViewFeedbackReports: false,
+  canViewStatistics: false,
 };
 
 const state = {
@@ -40,6 +44,7 @@ const state = {
   approvedTeachers: [],
   pendingTeacherApplications: [],
   pendingStudentApplications: [],
+  feedbackReports: [],
   session: null,
   students: [],
   schedules: [],
@@ -76,6 +81,9 @@ const state = {
     meetingScheduleId: null,
     showNotificationCenter: false,
     onboardingRole: null,
+    statsMonth: today.getMonth(),
+    statsYear: today.getFullYear(),
+    statsTeacherUid: "",
   },
 };
 
@@ -178,6 +186,7 @@ function resetUiState() {
     meetingScheduleId: null,
     showNotificationCenter: false,
     onboardingRole: null,
+    statsTeacherUid: "",
   };
 }
 
@@ -188,6 +197,7 @@ function clearDataState() {
   state.unreadNotificationCount = 0;
   state.pendingTeacherApplications = [];
   state.pendingStudentApplications = [];
+  state.feedbackReports = [];
   state.isLoadingData = false;
   state.loadError = "";
   state.popupNotification = null;
@@ -321,9 +331,11 @@ async function loadDashboardData() {
   render();
 
   try {
-    const [students, schedules] = await Promise.all([
+    const [students, schedules, approvedTeachers, feedbackReports] = await Promise.all([
       studentService.getAllStudents(state.session),
       scheduleService.getAllSchedules(state.session),
+      hasPermission("canViewStudentsByTeacher") ? firebaseAuthService.listApprovedTeachers() : Promise.resolve([]),
+      hasPermission("canViewFeedbackReports") ? feedbackService.listFeedbackReports(state.session) : Promise.resolve([]),
     ]);
 
     if (loadId !== currentLoadId) {
@@ -332,6 +344,8 @@ async function loadDashboardData() {
 
     state.students = students;
     state.schedules = schedules;
+    state.approvedTeachers = approvedTeachers;
+    state.feedbackReports = feedbackReports;
     state.pendingTeacherApplications = hasPermission("canApproveTeacher")
       ? await firebaseAuthService.listPendingTeacherApplications()
       : [];
@@ -563,6 +577,9 @@ async function handleApproveTeacher(uid) {
 
   await firebaseAuthService.approveTeacherApplication(application, state.session);
   await refreshApprovalApplications();
+  state.approvedTeachers = hasPermission("canViewStudentsByTeacher")
+    ? await firebaseAuthService.listApprovedTeachers()
+    : [];
   render();
 }
 
@@ -666,6 +683,12 @@ function handleMarkAllNotificationsRead() {
   render();
 }
 
+function handleDeleteNotification(notificationId) {
+  notificationInboxService.removeNotification(state.session?.uid, notificationId);
+  refreshNotificationInbox();
+  render();
+}
+
 function handleOpenNotification(notificationId, scheduleId) {
   notificationInboxService.markAsRead(state.session?.uid, notificationId);
   refreshNotificationInbox();
@@ -679,6 +702,47 @@ function handleOpenNotification(notificationId, scheduleId) {
   }
 
   render();
+}
+
+async function syncFeedbackReports() {
+  state.feedbackReports = hasPermission("canViewFeedbackReports")
+    ? await feedbackService.listFeedbackReports(state.session)
+    : [];
+}
+
+async function handleSubmitFeedback(payload) {
+  if (!hasPermission("canSubmitFeedback")) {
+    return { success: false, message: "Bạn không có quyền gửi góp ý." };
+  }
+
+  try {
+    const result = await feedbackService.createFeedbackReport(state.session, payload);
+    if (result.success) {
+      showToast("Góp ý và phản hồi", "Đã gửi vấn đề app cho host.");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Không thể gửi góp ý.", error);
+    return { success: false, message: "Không thể gửi góp ý lên Firebase." };
+  }
+}
+
+async function handleResolveFeedback(reportId) {
+  if (!hasPermission("canViewFeedbackReports")) {
+    return;
+  }
+
+  try {
+    const result = await feedbackService.resolveFeedbackReport(state.session, reportId);
+    if (result.success) {
+      await syncFeedbackReports();
+      showToast("Vấn đề app", "Đã đánh dấu vấn đề là đã xử lý.");
+    }
+  } catch (error) {
+    console.error("Không thể xử lý góp ý.", error);
+    showToast("Vấn đề app", "Không thể cập nhật trạng thái góp ý.");
+  }
 }
 
 async function handleSaveStudent(formData) {
@@ -1167,6 +1231,11 @@ function render() {
     year: state.ui.scheduleYear,
     selectedDate: state.ui.selectedScheduleDate,
   });
+  const statisticsReport = progressService.getTeachingStatistics(state.students, state.schedules, {
+    month: state.ui.statsMonth,
+    year: state.ui.statsYear,
+    teacherUid: state.ui.statsTeacherUid,
+  });
 
   appElement.innerHTML = "";
   DashboardScreen(appElement, {
@@ -1195,6 +1264,9 @@ function render() {
     notificationButtonLabel: getNotificationButtonLabel(),
     pendingTeacherApplications: state.pendingTeacherApplications,
     pendingStudentApplications: state.pendingStudentApplications,
+    approvedTeachers: state.approvedTeachers,
+    feedbackReports: state.feedbackReports,
+    statisticsReport,
     onApproveTeacherApplication: handleApproveTeacher,
     onRejectTeacherApplication: handleRejectTeacher,
     onApproveStudentApplication: handleApproveStudent,
@@ -1209,7 +1281,11 @@ function render() {
     onToggleNotificationCenter: handleToggleNotificationCenter,
     onMarkAllNotificationsRead: handleMarkAllNotificationsRead,
     onOpenNotification: handleOpenNotification,
+    onDeleteNotification: handleDeleteNotification,
     onChangeTab: (activeTab) => updateUi({ activeTab, showNotificationCenter: false }),
+    onChangeStatisticsFilter: (patch) => updateUi(patch),
+    onSubmitFeedback: handleSubmitFeedback,
+    onResolveFeedback: handleResolveFeedback,
     onChangeScheduleListTab: (scheduleListTab) => updateUi({ scheduleListTab }),
     onChangeCalendarMonth: (patch) => updateUi(patch),
     onSelectScheduleDate: (selectedScheduleDate) => updateUi({ selectedScheduleDate, scheduleListTab: "all" }),

@@ -265,3 +265,19 @@ Chi tiết code Firebase cần update được viết riêng tại:
 - `docs/FIREBASE_UPDATE_DE_XUAT.md`
 
 Mỗi khi task sau này cần đổi Firestore collection, rules hoặc indexes, tài liệu update Firebase phải được cập nhật cùng commit để có code kiểm tra trước khi deploy.
+
+## Cap nhat quyen cho feedback va thong ke
+
+Permission moi:
+
+- `canSubmitFeedback`: teacher/student duoc gui gop y va bao bug trong app.
+- `canViewFeedbackReports`: host duoc xem collection `feedbackReports` tai khu vuc `Van de app`.
+- `canViewStatistics`: host/teacher duoc mo tab `Thong ke`.
+
+Phan quyen:
+
+| Permission | `host` | `teacher` | `student` | `viewer` |
+|---|---:|---:|---:|---:|
+| `canSubmitFeedback` | Khong | Co | Co | Khong |
+| `canViewFeedbackReports` | Co | Khong | Khong | Khong |
+| `canViewStatistics` | Co | Co | Khong | Khong |
