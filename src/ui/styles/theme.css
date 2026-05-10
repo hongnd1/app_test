@@ -380,6 +380,40 @@ button { cursor: pointer; border: none; }
 .settings-panel {
   width: 100%;
 }
+.settings-accordion {
+  padding: 0;
+  overflow: hidden;
+}
+.settings-accordion__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.settings-accordion__trigger strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.08rem;
+}
+.settings-accordion__icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+.settings-accordion.is-open .settings-accordion__icon {
+  transform: rotate(90deg);
+}
+.settings-accordion__body {
+  display: grid;
+  gap: 16px;
+  padding: 0 24px 24px;
+}
 .settings-action-button {
   align-self: end;
 }

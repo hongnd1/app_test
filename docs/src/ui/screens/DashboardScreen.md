@@ -25,3 +25,4 @@ Render dashboard chính bằng DOM thuần.
 - Tab cai dat co form `Gop y va phan hoi` cho teacher/student.
 - Host thay panel `Van de app` trong cai dat va co nut danh dau da xu ly.
 - Tab `Thong ke` chi render khi co `canViewStatistics`; host co select chon giao vien.
+- Tab cai dat hien thi theo accordion: ben ngoai chi co tieu de, bam vao moi mo noi dung thao tac.

@@ -86,6 +86,41 @@ function feedbackStatusLabel(status) {
   return status === "resolved" ? "Đã xử lý" : "Đang mở";
 }
 
+function makeSettingsAccordion(panel, options = {}) {
+  const originalHeader = panel.querySelector(".panel__header");
+  const title = options.title || originalHeader?.querySelector("h2")?.textContent || "Cài đặt";
+  const eyebrow = options.eyebrow || originalHeader?.querySelector(".eyebrow")?.textContent || "";
+  const body = document.createElement("div");
+  body.className = "settings-accordion__body";
+  body.hidden = true;
+
+  while (panel.firstChild) {
+    body.appendChild(panel.firstChild);
+  }
+
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "settings-accordion__trigger";
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.innerHTML = `
+    <span>
+      ${eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ""}
+      <strong>${title}</strong>
+    </span>
+    <span class="settings-accordion__icon">›</span>
+  `;
+
+  trigger.addEventListener("click", () => {
+    const expanded = trigger.getAttribute("aria-expanded") === "true";
+    trigger.setAttribute("aria-expanded", String(!expanded));
+    body.hidden = expanded;
+    panel.classList.toggle("is-open", !expanded);
+  });
+
+  panel.classList.add("settings-accordion");
+  panel.append(trigger, body);
+}
+
 function createToast(message, onClose) {
   const toast = document.createElement("div");
   toast.className = "toast-notification";
@@ -863,6 +898,7 @@ function renderSettingsTab(container, props) {
     <p class="hero-copy">Các thiết lập thông báo, cài đặt thiết bị và đăng xuất được gom tại tab này.</p>
   `;
   summary.querySelector('[data-action="open-notifications"]').addEventListener("click", props.onToggleNotificationCenter);
+  makeSettingsAccordion(summary);
   section.appendChild(summary);
 
   if (props.reminderSummary.hasPending) {
@@ -908,6 +944,7 @@ function renderSettingsTab(container, props) {
     });
 
     pendingPanel.querySelector('[data-action="open-schedule"]').addEventListener("click", props.onOpenScheduleTab);
+    makeSettingsAccordion(pendingPanel);
     section.appendChild(pendingPanel);
   }
 
@@ -964,6 +1001,7 @@ function renderSettingsTab(container, props) {
     enableButton.disabled = props.notificationPermission === "granted";
     enableButton.addEventListener("click", props.onRequestNotificationPermission);
   }
+  makeSettingsAccordion(notificationSettings);
   section.appendChild(notificationSettings);
 
   const hasTeacherApprovals = props.permissions.canApproveTeacher && props.pendingTeacherApplications?.length;
@@ -1029,6 +1067,7 @@ function renderSettingsTab(container, props) {
       });
     }
 
+    makeSettingsAccordion(approvalPanel);
     section.appendChild(approvalPanel);
   }
 
@@ -1072,6 +1111,7 @@ function renderSettingsTab(container, props) {
       }
     });
 
+    makeSettingsAccordion(feedbackPanel);
     section.appendChild(feedbackPanel);
   }
 
@@ -1125,6 +1165,7 @@ function renderSettingsTab(container, props) {
       });
     }
 
+    makeSettingsAccordion(reportPanel);
     section.appendChild(reportPanel);
   }
 
@@ -1152,6 +1193,7 @@ function renderSettingsTab(container, props) {
     </div>
   `;
   accountPanel.querySelector('[data-action="logout"]').addEventListener("click", props.onLogout);
+  makeSettingsAccordion(accountPanel);
   section.appendChild(accountPanel);
 
   container.appendChild(section);
