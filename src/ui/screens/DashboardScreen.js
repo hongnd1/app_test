@@ -90,19 +90,18 @@ function makeSettingsAccordion(panel, options = {}) {
   const originalHeader = panel.querySelector(".panel__header");
   const title = options.title || originalHeader?.querySelector("h2")?.textContent || "Cài đặt";
   const eyebrow = options.eyebrow || originalHeader?.querySelector(".eyebrow")?.textContent || "";
+  const details = document.createElement("details");
+  details.className = "settings-accordion";
+  const summary = document.createElement("summary");
+  summary.className = "settings-accordion__trigger";
   const body = document.createElement("div");
   body.className = "settings-accordion__body";
-  body.hidden = true;
 
   while (panel.firstChild) {
     body.appendChild(panel.firstChild);
   }
 
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "settings-accordion__trigger";
-  trigger.setAttribute("aria-expanded", "false");
-  trigger.innerHTML = `
+  summary.innerHTML = `
     <span>
       ${eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ""}
       <strong>${title}</strong>
@@ -110,15 +109,9 @@ function makeSettingsAccordion(panel, options = {}) {
     <span class="settings-accordion__icon">›</span>
   `;
 
-  trigger.addEventListener("click", () => {
-    const expanded = trigger.getAttribute("aria-expanded") === "true";
-    trigger.setAttribute("aria-expanded", String(!expanded));
-    body.hidden = expanded;
-    panel.classList.toggle("is-open", !expanded);
-  });
-
-  panel.classList.add("settings-accordion");
-  panel.append(trigger, body);
+  details.append(summary, body);
+  panel.classList.add("settings-panel--collapsed");
+  panel.append(details);
 }
 
 function createToast(message, onClose) {
@@ -1149,7 +1142,7 @@ function renderSettingsTab(container, props) {
             </div>
             ${
               report.status === "resolved"
-                ? ""
+                ? '<button type="button" class="ghost-danger-button compact-button" data-action="delete">Xóa</button>'
                 : '<button type="button" class="secondary-button compact-button" data-action="resolve">Đã xử lý</button>'
             }
           </div>
@@ -1159,6 +1152,10 @@ function renderSettingsTab(container, props) {
         const resolveButton = item.querySelector('[data-action="resolve"]');
         if (resolveButton) {
           resolveButton.addEventListener("click", () => props.onResolveFeedback(report.id));
+        }
+        const deleteButton = item.querySelector('[data-action="delete"]');
+        if (deleteButton) {
+          deleteButton.addEventListener("click", () => props.onDeleteResolvedFeedback(report.id));
         }
 
         list.appendChild(item);

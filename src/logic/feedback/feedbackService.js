@@ -1,7 +1,9 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -112,5 +114,26 @@ export const feedbackService = {
     });
 
     return { success: true };
+  },
+
+  async deleteResolvedFeedbackReport(session, reportId) {
+    if (!session?.permissions?.canViewFeedbackReports) {
+      return { success: false, message: "Bạn không có quyền xóa góp ý." };
+    }
+
+    await deleteDoc(doc(firestore, FEEDBACK_COLLECTION, reportId));
+    return { success: true };
+  },
+
+  subscribeFeedbackReports(session, callback, onError) {
+    if (!session?.permissions?.canViewFeedbackReports) {
+      return () => {};
+    }
+
+    return onSnapshot(
+      query(collection(firestore, FEEDBACK_COLLECTION), orderBy("createdAt", "desc")),
+      (snapshot) => callback(snapshot.docs.map(normalizeFeedback)),
+      onError,
+    );
   },
 };

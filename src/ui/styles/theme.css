@@ -380,9 +380,12 @@ button { cursor: pointer; border: none; }
 .settings-panel {
   width: 100%;
 }
-.settings-accordion {
+.settings-panel--collapsed {
   padding: 0;
   overflow: hidden;
+}
+.settings-accordion {
+  display: block;
 }
 .settings-accordion__trigger {
   width: 100%;
@@ -394,6 +397,11 @@ button { cursor: pointer; border: none; }
   background: transparent;
   color: var(--text);
   text-align: left;
+  cursor: pointer;
+  list-style: none;
+}
+.settings-accordion__trigger::-webkit-details-marker {
+  display: none;
 }
 .settings-accordion__trigger strong {
   display: block;
@@ -406,7 +414,7 @@ button { cursor: pointer; border: none; }
   color: var(--muted);
   transition: transform 0.18s ease;
 }
-.settings-accordion.is-open .settings-accordion__icon {
+.settings-accordion[open] .settings-accordion__icon {
   transform: rotate(90deg);
 }
 .settings-accordion__body {

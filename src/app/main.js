@@ -92,7 +92,9 @@ let currentLoadId = 0;
 let stopReminderScheduler = null;
 let stopRealtimeDatListener = null;
 let stopForegroundMessages = null;
+let stopFeedbackReportListener = null;
 let fcmNotificationServicePromise = null;
+let knownFeedbackReportIds = new Set();
 
 function getTodayString() {
   return new Date().toISOString().slice(0, 10);
@@ -175,6 +177,42 @@ function pushInboxNotification(notification, options = {}) {
   render();
 }
 
+function syncFeedbackReportNotifications(reports, options = {}) {
+  if (!state.session?.uid || !hasPermission("canViewFeedbackReports")) {
+    return;
+  }
+
+  let hasNewNotification = false;
+  reports
+    .filter((report) => report.status === "open")
+    .forEach((report) => {
+      if (knownFeedbackReportIds.has(report.id)) {
+        return;
+      }
+
+      knownFeedbackReportIds.add(report.id);
+      hasNewNotification = true;
+      notificationInboxService.addNotification(state.session.uid, {
+        id: `feedback_${report.id}`,
+        key: `feedback:${report.id}`,
+        title: "Vấn đề app mới",
+        body: `${report.authorName || report.authorEmail || "Người dùng"} gửi: ${report.title}`,
+        channel: "feedback-report",
+        createdAt: report.createdAt || new Date().toISOString(),
+        metadata: { feedbackReportId: report.id },
+      });
+    });
+
+  refreshNotificationInbox();
+
+  if (hasNewNotification && options.showToast) {
+    state.toastMessage = {
+      title: "Vấn đề app mới",
+      body: "Có góp ý/phản hồi mới cần host kiểm tra.",
+    };
+  }
+}
+
 function resetUiState() {
   state.ui = {
     ...state.ui,
@@ -225,9 +263,17 @@ function stopForegroundMessageListener() {
   }
 }
 
+function stopFeedbackReportLoop() {
+  if (stopFeedbackReportListener) {
+    stopFeedbackReportListener();
+    stopFeedbackReportListener = null;
+  }
+}
+
 function stopNotificationRuntime() {
   stopRealtimeNotificationLoop();
   stopForegroundMessageListener();
+  stopFeedbackReportLoop();
 }
 
 function showBrowserNotificationIfGranted(notification) {
@@ -319,6 +365,26 @@ async function syncSchedules() {
   syncPendingNotificationInbox();
 }
 
+function startFeedbackReportRuntime() {
+  stopFeedbackReportLoop();
+
+  if (!state.session || !hasPermission("canViewFeedbackReports")) {
+    return;
+  }
+
+  stopFeedbackReportListener = feedbackService.subscribeFeedbackReports(
+    state.session,
+    (reports) => {
+      state.feedbackReports = reports;
+      syncFeedbackReportNotifications(reports, { showToast: true });
+      render();
+    },
+    (error) => {
+      console.error("Không thể lắng nghe góp ý/phản hồi.", error);
+    },
+  );
+}
+
 async function loadDashboardData() {
   if (!state.session) {
     clearDataState();
@@ -346,6 +412,8 @@ async function loadDashboardData() {
     state.schedules = schedules;
     state.approvedTeachers = approvedTeachers;
     state.feedbackReports = feedbackReports;
+    knownFeedbackReportIds = new Set();
+    syncFeedbackReportNotifications(feedbackReports);
     state.pendingTeacherApplications = hasPermission("canApproveTeacher")
       ? await firebaseAuthService.listPendingTeacherApplications()
       : [];
@@ -353,6 +421,7 @@ async function loadDashboardData() {
       ? await firebaseAuthService.listPendingStudentApplications(state.session)
       : [];
     syncPendingNotificationInbox();
+    startFeedbackReportRuntime();
   } catch (error) {
     if (loadId !== currentLoadId) {
       return;
@@ -742,6 +811,23 @@ async function handleResolveFeedback(reportId) {
   } catch (error) {
     console.error("Không thể xử lý góp ý.", error);
     showToast("Vấn đề app", "Không thể cập nhật trạng thái góp ý.");
+  }
+}
+
+async function handleDeleteResolvedFeedback(reportId) {
+  if (!hasPermission("canViewFeedbackReports")) {
+    return;
+  }
+
+  try {
+    const result = await feedbackService.deleteResolvedFeedbackReport(state.session, reportId);
+    if (result.success) {
+      await syncFeedbackReports();
+      showToast("Vấn đề app", "Đã xóa vấn đề đã xử lý.");
+    }
+  } catch (error) {
+    console.error("Không thể xóa góp ý đã xử lý.", error);
+    showToast("Vấn đề app", "Chỉ có thể xóa vấn đề đã xử lý hoặc bạn chưa có quyền.");
   }
 }
 
@@ -1286,6 +1372,7 @@ function render() {
     onChangeStatisticsFilter: (patch) => updateUi(patch),
     onSubmitFeedback: handleSubmitFeedback,
     onResolveFeedback: handleResolveFeedback,
+    onDeleteResolvedFeedback: handleDeleteResolvedFeedback,
     onChangeScheduleListTab: (scheduleListTab) => updateUi({ scheduleListTab }),
     onChangeCalendarMonth: (patch) => updateUi(patch),
     onSelectScheduleDate: (selectedScheduleDate) => updateUi({ selectedScheduleDate, scheduleListTab: "all" }),

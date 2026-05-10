@@ -173,7 +173,7 @@ Rules moi:
 - `authorUid` phai bang `request.auth.uid`.
 - `authorRole` phai bang role hien tai va chi chap nhan `teacher` hoac `student`.
 - Host duoc doc tat ca report va update `status = resolved`.
-- Khong role nao duoc delete report tu client.
+- Host duoc delete report khi `status = resolved`; report dang mo khong duoc delete tu client.
 
 Code can deploy sau khi review:
 

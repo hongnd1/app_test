@@ -34,3 +34,5 @@ Entry point của app. File này giữ state runtime, subscribe auth, tải dữ
 - Notification center co handler xoa tung thong bao local.
 - Tab `Thong ke` dung `progressService.getTeachingStatistics`; host co them danh sach giao vien da duyet de loc.
 - Permission moi can giu dong bo: `canSubmitFeedback`, `canViewFeedbackReports`, `canViewStatistics`.
+- Host co realtime listener cho `feedbackReports`; report moi tao notification local `Van de app moi`.
+- Host co handler xoa feedback da xu ly.
